@@ -6,6 +6,7 @@ import logging
 import secrets
 from datetime import timedelta
 
+from cachelib.file import FileSystemCache
 from flask import Flask, jsonify, render_template, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -37,8 +38,10 @@ def create_app(*, testing: bool = False) -> Flask:
     app.config.update(
         SECRET_KEY=secret,
         TESTING=testing,
-        SESSION_TYPE="filesystem",
-        SESSION_FILE_DIR=str(session_dir),
+        SESSION_TYPE="cachelib",
+        SESSION_CACHELIB=FileSystemCache(
+            cache_dir=str(session_dir), threshold=500, mode=0o600
+        ),
         SESSION_PERMANENT=True,
         PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
         SESSION_COOKIE_NAME="zyrahd_session",
