@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block title %}Kommandozentrale · zyrahd.net{% endblock %}
+{% block page %}dashboard{% endblock %}
+{% block content %}
+<div class="app-shell"
+     data-user-id="{{ user.id }}"
+     data-permissions="{{ permissions|tojson|forceescape }}">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand sidebar-brand" href="/">
+      <span class="brand-mark">Z</span>
+      <span>zyrahd<span class="brand-dot">.net</span></span>
+    </a>
+    <div class="server-switcher">
+      {% if snapshot.guild.icon %}
+        <img src="{{ snapshot.guild.icon }}" alt="">
+      {% else %}
+        <span class="server-fallback">{{ snapshot.guild.name[:1] }}</span>
+      {% endif %}
+      <div><small>Verbundener Server</small><strong>{{ snapshot.guild.name }}</strong></div>
+      <span class="chevron">⌄</span>
+    </div>
+    <nav class="side-nav">
+      <span class="nav-label">Übersicht</span>
+      <button class="nav-item active" data-section="overview"><i>⌂</i><span>Dashboard</span></button>
+      <button class="nav-item" data-section="my-tickets"><i>◫</i><span>Meine Tickets</span><b id="my-ticket-badge">0</b></button>
+      {% if "tickets.view" in permissions %}
+      <button class="nav-item" data-section="tickets"><i>▱</i><span>Ticket-Zentrale</span></button>
+      {% endif %}
+
+      {% if "dashboard.open" in permissions %}
+      <span class="nav-label">Module</span>
+      {% if "server.edit" in permissions %}
+      <button class="nav-item" data-section="welcome"><i>✦</i><span>Willkommen</span></button>
+      <button class="nav-item" data-section="verify"><i>✓</i><span>Verifizierung</span></button>
+      {% endif %}
+      {% if "security.edit" in permissions %}
+      <button class="nav-item" data-section="security"><i>◇</i><span>Sicherheit</span></button>
+      {% endif %}
+      {% if "moderation.execute" in permissions %}
+      <button class="nav-item" data-section="moderation"><i>⚑</i><span>Moderation</span></button>
+      {% endif %}
+      {% if "messages.send" in permissions %}
+      <button class="nav-item" data-section="designer"><i>✎</i><span>Embed-Designer</span></button>
+      {% endif %}
+      {% if "team.manage" in permissions %}
+      <button class="nav-item" data-section="team"><i>♢</i><span>Team</span></button>
+      {% endif %}
+
+      <span class="nav-label">System</span>
+      {% if "roles.manage" in permissions %}
+      <button class="nav-item" data-section="permissions"><i>⚙</i><span>Berechtigungen</span></button>
+      {% endif %}
+      {% if "audit.view" in permissions %}
+      <button class="nav-item" data-section="audit"><i>≡</i><span>Audit-Log</span></button>
+      {% endif %}
+      {% endif %}
+    </nav>
+    <div class="sidebar-foot">
+      <div class="bot-state {{ 'online' if snapshot.ready else 'offline' }}">
+        <span></span><div><small>Discord Bot</small><strong>{{ "Online" if snapshot.ready else "Offline" }}</strong></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main-panel">
+    <header class="topbar">
+      <button class="icon-button mobile-menu" id="mobile-menu" aria-label="Menü öffnen">☰</button>
+      <div class="top-title">
+        <span class="breadcrumb">zyrahd.net /</span>
+        <strong id="page-title">Dashboard</strong>
+      </div>
+      <div class="top-actions">
+        <button class="icon-button" id="refresh-page" title="Daten aktualisieren">↻</button>
+        <div class="profile">
+          <img src="{{ user.avatar }}" alt="">
+          <div><strong>{{ user.username }}</strong><small>Discord-Konto</small></div>
+          <span class="chevron">⌄</span>
+          <form action="{{ url_for('auth.logout') }}" method="post" class="profile-menu">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Abmelden</button>
+          </form>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+      <section class="page-section active" data-page-section="overview">
+        <div class="page-heading">
+          <div><span class="eyebrow small">KOMMANDOZENTRALE</span><h1>Guten Abend, {{ user.username }}.</h1><p>Hier ist der aktuelle Puls deiner Community.</p></div>
+          <div class="live-badge"><span></span> Live-Daten</div>
+        </div>
+        <div class="stats-grid" id="stats-grid">
+          <article class="stat-card skeleton"><span>Mitglieder</span><strong>–</strong><small>Gesamt auf dem Server</small><i class="stat-icon">♢</i></article>
+          <article class="stat-card skeleton"><span>Online</span><strong>–</strong><small>Gerade aktiv</small><i class="stat-icon green">●</i></article>
+          <article class="stat-card skeleton"><span>Offene Tickets</span><strong>–</strong><small>Benötigen Aufmerksamkeit</small><i class="stat-icon purple">◫</i></article>
+          <article class="stat-card skeleton"><span>Heute erstellt</span><strong>–</strong><small>Neue Anfragen</small><i class="stat-icon rose">＋</i></article>
+        </div>
+        <div class="dashboard-grid">
+          <article class="panel chart-panel">
+            <div class="panel-head"><div><span class="panel-kicker">TICKETS</span><h2>Volumen der letzten 7 Tage</h2></div><span class="legend"><i></i> Erstellte Tickets</span></div>
+            <canvas id="ticket-chart" height="240"></canvas>
+          </article>
+          <article class="panel activity-panel">
+            <div class="panel-head"><div><span class="panel-kicker">LIVE</span><h2>Letzte Aktivitäten</h2></div><button class="plain-button" data-goto="audit">Alle ansehen</button></div>
+            <div id="activity-list" class="activity-list"><div class="empty-state compact">Aktivitäten werden geladen …</div></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="page-section" data-page-section="my-tickets">
+        <div class="page-heading">
+          <div><span class="eyebrow small">KUNDENBEREICH</span><h1>Meine Tickets</h1><p>Erstelle Anfragen und bleibe direkt mit dem Team in Kontakt.</p></div>
+          <button class="button" data-open-dialog="new-ticket-dialog">＋ Neues Ticket</button>
+        </div>
+        <div class="filter-row">
+          <button class="filter-chip active" data-ticket-filter="">Alle</button>
+          <button class="filter-chip" data-ticket-filter="open">Offen</button>
+          <button class="filter-chip" data-ticket-filter="waiting">Wartend</button>
+          <button class="filter-chip" data-ticket-filter="closed">Geschlossen</button>
+        </div>
+        <div class="ticket-grid" id="my-ticket-list"></div>
+      </section>
+
+      {% if "tickets.view" in permissions %}
+      <section class="page-section" data-page-section="tickets">
+        <div class="page-heading">
+          <div><span class="eyebrow small">SUPPORT</span><h1>Ticket-Zentrale</h1><p>Alle Anfragen, Status und Zuständigkeiten in einer Ansicht.</p></div>
+          {% if "tickets.edit" in permissions %}<button class="button ghost" data-open-dialog="ticket-type-dialog">Ticket-Arten verwalten</button>{% endif %}
+        </div>
+        <div class="panel">
+          <div class="table-tools"><input class="input" id="ticket-search" placeholder="Tickets durchsuchen …"><select class="input" id="team-ticket-status"><option value="">Alle Status</option><option value="open">Offen</option><option value="claimed">Übernommen</option><option value="waiting">Wartend</option><option value="closed">Geschlossen</option></select></div>
+          <div class="table-wrap"><table><thead><tr><th>Ticket</th><th>Ersteller</th><th>Bereich</th><th>Priorität</th><th>Status</th><th>Aktualisiert</th></tr></thead><tbody id="team-ticket-list"></tbody></table></div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if "server.edit" in permissions %}
+      <section class="page-section" data-page-section="welcome">
+        <div class="page-heading"><div><span class="eyebrow small">AUTOMATION</span><h1>Willkommen & Abschied</h1><p>Begrüße neue Mitglieder persönlich und vergib Rollen automatisch.</p></div></div>
+        <div class="settings-layout">
+          <form class="panel settings-form" id="welcome-form" data-settings-module="welcome">
+            <div class="panel-head"><div><h2>Willkommensnachricht</h2><p>Wird beim Serverbeitritt ausgelöst.</p></div><label class="switch"><input type="checkbox" name="enabled"><span></span></label></div>
+            <div class="form-grid">
+              <label class="field"><span>Kanal</span><div class="resource-select" data-name="channel_id" data-types="text,announcement"><button type="button">Kanal auswählen …</button></div></label>
+              <label class="field"><span>Darstellung</span><select name="mode" class="input"><option value="embed">Embed</option><option value="text">Nur Text</option></select></label>
+              <label class="field full"><span>Titel</span><input class="input" name="title" maxlength="256" placeholder="Willkommen auf {server}!"></label>
+              <label class="field full"><span>Nachricht</span><textarea class="input" name="description" rows="5" maxlength="4000" placeholder="Hey {mention}, du bist unser {member_count}. Mitglied."></textarea><small>{mention}, {server}, {member_count}, {display_name}</small></label>
+              <label class="field"><span>Akzentfarbe</span><input class="input color-input" type="color" name="color" value="#7c5cff"></label>
+              <label class="field"><span>Bild-URL</span><input class="input" type="url" name="image_url" placeholder="https://…"></label>
+              <label class="field full"><span>Automatische Rollen</span><div class="resource-select" data-name="role_ids" data-types="role" data-multiple="true"><button type="button">Rollen auswählen …</button></div></label>
+              <label class="field full"><span>Private Willkommens-DM</span><textarea class="input" name="dm_message" rows="3" maxlength="2000"></textarea></label>
+            </div>
+            <div class="form-actions"><button type="button" class="button ghost" data-reset-form>Zurücksetzen</button><button class="button" type="submit">Änderungen speichern</button></div>
+          </form>
+          <div class="panel preview-panel"><span class="panel-kicker">LIVE-VORSCHAU</span><div class="discord-preview" id="welcome-preview"><div class="discord-author"><span class="bot-avatar">Z</span><strong>zyrahd</strong><b>APP</b><small>heute um 20:42</small></div><div class="discord-embed"><i></i><h3>Willkommen!</h3><p>Deine Nachricht erscheint hier.</p></div></div></div>
+        </div>
+      </section>
+
+      <section class="page-section" data-page-section="verify">
+        <div class="page-heading"><div><span class="eyebrow small">ZUGANG</span><h1>Verifizierung</h1><p>Gib neuen Mitgliedern sicher und automatisch Zugriff.</p></div></div>
+        <form class="panel settings-form narrow" id="verify-form" data-settings-module="verify">
+          <div class="panel-head"><div><h2>Verify-Panel</h2><p>Alle Auswahlen werden live vom Discord-Server geladen.</p></div><label class="switch"><input type="checkbox" name="enabled"><span></span></label></div>
+          <div class="form-grid">
+            <label class="field"><span>Verifizierungsrolle</span><div class="resource-select" data-name="role_id" data-types="role"><button type="button">Rolle auswählen …</button></div></label>
+            <label class="field"><span>Account-Mindestalter (Tage)</span><input class="input" type="number" min="0" max="3650" name="minimum_account_age_days" value="0"></label>
+            <label class="field full"><span>Zu entfernende Rollen</span><div class="resource-select" data-name="remove_role_ids" data-types="role" data-multiple="true"><button type="button">Rollen auswählen …</button></div></label>
+            <label class="field"><span>Panel-Titel</span><input class="input" name="title" value="Verifizierung"></label>
+            <label class="field"><span>Akzentfarbe</span><input class="input color-input" type="color" name="color" value="#7c5cff"></label>
+            <label class="field full"><span>Beschreibung</span><textarea class="input" name="description" rows="4"></textarea></label>
+            <label class="field full"><span>Erfolgs-DM</span><textarea class="input" name="success_dm" rows="3"></textarea></label>
+          </div>
+          <div class="form-actions"><div class="publish-control"><div class="resource-select compact-select" data-name="publish_channel" data-types="text,announcement"><button type="button">Panel-Kanal …</button></div><button type="button" class="button ghost" data-publish-panel="verify">Panel veröffentlichen</button></div><button class="button" type="submit">Speichern</button></div>
+        </form>
+      </section>
+      {% endif %}
+
+      {% if "security.edit" in permissions %}
+      <section class="page-section" data-page-section="security">
+        <div class="page-heading"><div><span class="eyebrow small">SCHUTZSCHILD</span><h1>Sicherheit</h1><p>Automatischer Schutz ohne unnötige Fehlalarme.</p></div><span class="live-badge"><span></span> Schutz aktiv</span></div>
+        <div class="settings-layout">
+          <form class="panel settings-form" id="security-form" data-settings-module="security">
+            <div class="panel-head"><div><h2>Anti-Spam</h2><p>Reagiert auf ungewöhnlich viele Nachrichten.</p></div><label class="switch"><input type="checkbox" name="anti_spam_enabled"><span></span></label></div>
+            <div class="form-grid thirds">
+              <label class="field"><span>Nachrichtenlimit</span><input class="input" type="number" name="spam_message_limit" min="3" max="20" value="6"></label>
+              <label class="field"><span>Zeitfenster (Sek.)</span><input class="input" type="number" name="spam_window_seconds" min="2" max="60" value="6"></label>
+              <label class="field"><span>Timeout (Min.)</span><input class="input" type="number" name="spam_timeout_minutes" min="1" max="40320" value="5"></label>
+              <label class="field full"><span>Ausgenommene Kanäle</span><div class="resource-select" data-name="ignored_channels" data-types="text,announcement,forum,voice" data-multiple="true"><button type="button">Kanäle auswählen …</button></div></label>
+              <label class="field full"><span>Ausgenommene Rollen</span><div class="resource-select" data-name="ignored_roles" data-types="role" data-multiple="true"><button type="button">Rollen auswählen …</button></div></label>
+            </div>
+            <div class="form-actions"><span></span><button class="button" type="submit">Schutz speichern</button></div>
+          </form>
+          <form class="panel settings-form" id="word-filter-form">
+            <div class="panel-head"><div><h2>Neuer Wortfilter</h2><p>Erkennt auch einfache Umgehungsversuche.</p></div></div>
+            <div class="form-grid">
+              <label class="field full"><span>Wort oder Ausdruck</span><input class="input" name="phrase" required minlength="2" maxlength="200"></label>
+              <label class="field"><span>Erkennung</span><select class="input" name="mode"><option value="contains">Enthält Ausdruck</option><option value="exact">Exaktes Wort</option></select></label>
+              <label class="field"><span>Aktion</span><select class="input" name="action"><option value="delete">Löschen</option><option value="warn">Verwarnen</option><option value="timeout">Timeout</option><option value="kick">Kick</option><option value="ban">Ban</option></select></label>
+              <label class="field"><span>Timeout-Minuten</span><input class="input" type="number" name="timeout_minutes" value="10" min="1" max="40320"></label>
+              <label class="field check-field"><input type="checkbox" name="case_sensitive"><span>Groß-/Kleinschreibung beachten</span></label>
+              <label class="field full"><span>Hinweis an Benutzer</span><input class="input" name="response" value="Diese Nachricht verstößt gegen unsere Regeln."></label>
+            </div>
+            <div class="form-actions"><span></span><button class="button" type="submit">Filter hinzufügen</button></div>
+          </form>
+        </div>
+        <div class="panel"><div class="panel-head"><div><h2>Aktive Filter</h2></div></div><div id="word-filter-list" class="list-cards"></div></div>
+      </section>
+      {% endif %}
+
+      {% if "moderation.execute" in permissions %}
+      <section class="page-section" data-page-section="moderation">
+        <div class="page-heading"><div><span class="eyebrow small">MODERATION</span><h1>Fälle & Sanktionen</h1><p>Nachvollziehbar, schnell und direkt mit Discord verbunden.</p></div><button class="button" data-open-dialog="moderation-dialog">＋ Sanktion</button></div>
+        <div class="panel"><div class="table-tools"><input class="input" id="case-search" placeholder="Fall, Nutzer oder Grund suchen …"></div><div class="table-wrap"><table><thead><tr><th>Fall</th><th>Nutzer</th><th>Aktion</th><th>Moderator</th><th>Status</th><th>Datum</th></tr></thead><tbody id="case-list"></tbody></table></div></div>
+      </section>
+      {% endif %}
+
+      {% if "messages.send" in permissions %}
+      <section class="page-section" data-page-section="designer">
+        <div class="page-heading"><div><span class="eyebrow small">STUDIO</span><h1>Embed-Designer</h1><p>Baue hochwertige Discord-Nachrichten mit sofortiger Vorschau.</p></div></div>
+        <div class="designer-layout">
+          <form class="panel settings-form" id="designer-form">
+            <div class="form-grid">
+              <label class="field full"><span>Zielkanal</span><div class="resource-select" data-name="channel_id" data-types="text,announcement"><button type="button">Kanal auswählen …</button></div></label>
+              <label class="field full"><span>Normaler Text</span><textarea class="input" name="content" rows="2" maxlength="2000"></textarea></label>
+              <label class="field"><span>Embed-Titel</span><input class="input" name="title" maxlength="256"></label>
+              <label class="field"><span>Farbe</span><input class="input color-input" name="color" type="color" value="#7c5cff"></label>
+              <label class="field full"><span>Beschreibung</span><textarea class="input" name="description" rows="7" maxlength="4000"></textarea></label>
+              <label class="field"><span>Footer</span><input class="input" name="footer" maxlength="2048"></label>
+              <label class="field"><span>Thumbnail-URL</span><input class="input" type="url" name="thumbnail"></label>
+              <label class="field check-field"><input type="checkbox" name="timestamp"><span>Zeitstempel anzeigen</span></label>
+            </div>
+            <div class="form-actions"><button type="reset" class="button ghost">Leeren</button><button class="button" type="submit">In Discord senden</button></div>
+          </form>
+          <div class="panel preview-panel sticky"><span class="panel-kicker">LIVE-VORSCHAU</span><div class="discord-preview" id="embed-preview"><div class="discord-author"><span class="bot-avatar">Z</span><strong>zyrahd</strong><b>APP</b><small>heute um 20:42</small></div><p class="preview-content"></p><div class="discord-embed"><i></i><h3>Dein Embed-Titel</h3><p>Die Beschreibung wird während der Eingabe live aktualisiert.</p><small></small></div></div></div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if "team.manage" in permissions %}
+      <section class="page-section" data-page-section="team">
+        <div class="page-heading"><div><span class="eyebrow small">TEAM</span><h1>Ankündigungen</h1><p>Erreiche ausgewählte Rollen und erfasse Lesebestätigungen.</p></div></div>
+        <div class="settings-layout">
+          <form class="panel settings-form" id="announcement-form">
+            <div class="form-grid">
+              <label class="field full"><span>Titel</span><input class="input" name="title" required maxlength="150"></label>
+              <label class="field full"><span>Nachricht</span><textarea class="input" name="message" required rows="7" maxlength="4000"></textarea></label>
+              <label class="field"><span>Priorität</span><select class="input" name="priority"><option value="normal">Normal</option><option value="important">Wichtig</option><option value="critical">Kritisch</option></select></label>
+              <label class="field"><span>Zielkanal</span><div class="resource-select" data-name="channel_id" data-types="text,announcement"><button type="button">Kanal auswählen …</button></div></label>
+              <label class="field full"><span>Zielrollen</span><div class="resource-select" data-name="target_role_ids" data-types="role" data-multiple="true"><button type="button">Rollen auswählen …</button></div></label>
+              <label class="field check-field full"><input type="checkbox" name="require_confirmation"><span>Lesebestätigung erforderlich</span></label>
+            </div>
+            <div class="form-actions"><span></span><button class="button" type="submit">Jetzt veröffentlichen</button></div>
+          </form>
+          <div class="panel"><div class="panel-head"><div><h2>Verlauf</h2></div></div><div id="announcement-list" class="list-cards"></div></div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if "roles.manage" in permissions %}
+      <section class="page-section" data-page-section="permissions">
+        <div class="page-heading"><div><span class="eyebrow small">ZUGRIFF</span><h1>Dashboard-Berechtigungen</h1><p>Discord-Rollen erhalten nur die wirklich benötigten Bereiche.</p></div></div>
+        <div class="settings-layout">
+          <form class="panel settings-form" id="permission-form">
+            <label class="field"><span>Discord-Rolle</span><div class="resource-select" data-name="role_id" data-types="role"><button type="button">Rolle auswählen …</button></div></label>
+            <div class="permission-grid" id="permission-options"></div>
+            <div class="form-actions"><span></span><button class="button" type="submit">Zuordnung speichern</button></div>
+          </form>
+          <div class="panel"><div class="panel-head"><div><h2>Aktive Zuordnungen</h2></div></div><div id="permission-list" class="list-cards"></div></div>
+        </div>
+      </section>
+      {% endif %}
+
+      {% if "audit.view" in permissions %}
+      <section class="page-section" data-page-section="audit">
+        <div class="page-heading"><div><span class="eyebrow small">TRANSPARENZ</span><h1>Audit-Log</h1><p>Jede Änderung im Dashboard bleibt nachvollziehbar.</p></div></div>
+        <div class="panel"><div class="table-tools"><input class="input" id="audit-search" placeholder="Aktivitäten durchsuchen …"></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>Benutzer</th><th>Aktion</th><th>Bereich</th><th>Ziel</th><th>Zeit</th></tr></thead><tbody id="audit-list"></tbody></table></div></div>
+      </section>
+      {% endif %}
+    </div>
+  </main>
+</div>
+
+<dialog class="modal" id="new-ticket-dialog">
+  <form method="dialog" class="modal-card" id="new-ticket-form">
+    <button class="modal-close" value="cancel" aria-label="Schließen">×</button>
+    <span class="eyebrow small">NEUE ANFRAGE</span><h2>Wie können wir helfen?</h2><p>Wähle einen Bereich und fülle das passende Formular aus.</p>
+    <div id="ticket-type-picker" class="type-picker"></div>
+    <div id="dynamic-ticket-fields" class="form-grid"></div>
+    <div class="form-actions"><button class="button ghost" value="cancel">Abbrechen</button><button class="button" type="submit" value="default">Ticket erstellen</button></div>
+  </form>
+</dialog>
+
+<dialog class="modal wide" id="ticket-detail-dialog">
+  <div class="modal-card ticket-detail">
+    <button class="modal-close" data-close-dialog aria-label="Schließen">×</button>
+    <div id="ticket-detail-head"></div>
+    <div id="ticket-form-data" class="answer-grid"></div>
+    <div id="ticket-messages" class="message-stream"></div>
+    <form id="ticket-reply-form" class="reply-box"><textarea class="input" name="content" rows="2" maxlength="2000" placeholder="Antwort schreiben …"></textarea><button class="button" type="submit">Senden</button></form>
+    <div class="ticket-actions"><button class="button danger ghost" id="close-ticket" type="button">Ticket schließen</button></div>
+  </div>
+</dialog>
+
+{% if "tickets.edit" in permissions %}
+<dialog class="modal wide" id="ticket-type-dialog">
+  <div class="modal-card">
+    <button class="modal-close" data-close-dialog aria-label="Schließen">×</button>
+    <span class="eyebrow small">KONFIGURATION</span><h2>Ticket-Arten</h2>
+    <div class="split-modal">
+      <div id="ticket-type-admin-list" class="list-cards"></div>
+      <form id="ticket-type-form" class="form-grid">
+        <input type="hidden" name="id">
+        <label class="field"><span>Name</span><input class="input" name="name" required maxlength="80"></label>
+        <label class="field"><span>Emoji</span><input class="input" name="emoji" value="🎫" maxlength="40"></label>
+        <label class="field full"><span>Beschreibung</span><input class="input" name="description" maxlength="300"></label>
+        <label class="field"><span>Farbe</span><input class="input color-input" name="color" type="color" value="#7c5cff"></label>
+        <label class="field"><span>Priorität</span><select class="input" name="priority"><option value="low">Niedrig</option><option value="normal">Normal</option><option value="high">Hoch</option><option value="urgent">Dringend</option></select></label>
+        <label class="field"><span>Max. offen pro Nutzer</span><input class="input" name="max_open" type="number" min="1" max="20" value="1"></label>
+        <label class="field"><span>Cooldown (Min.)</span><input class="input" name="cooldown_minutes" type="number" min="0" value="5"></label>
+        <label class="field full"><span>Kategorie</span><div class="resource-select" data-name="category_id" data-types="category"><button type="button">Kategorie auswählen …</button></div></label>
+        <label class="field full"><span>Support-Rollen</span><div class="resource-select" data-name="support_role_ids" data-types="role" data-multiple="true"><button type="button">Rollen auswählen …</button></div></label>
+        <label class="field full"><span>Begrüßung im Ticket</span><textarea class="input" name="welcome_message" rows="3"></textarea></label>
+        <label class="field check-field"><input type="checkbox" name="enabled" checked><span>Aktiviert</span></label>
+        <label class="field check-field"><input type="checkbox" name="ping_roles" checked><span>Support-Rollen erwähnen</span></label>
+        <div class="form-actions full"><button class="button ghost" type="reset">Neu</button><button class="button" type="submit">Speichern</button></div>
+      </form>
+    </div>
+  </div>
+</dialog>
+{% endif %}
+
+{% if "moderation.execute" in permissions %}
+<dialog class="modal" id="moderation-dialog">
+  <form method="dialog" class="modal-card" id="moderation-form">
+    <button class="modal-close" value="cancel" aria-label="Schließen">×</button>
+    <span class="eyebrow small">NEUER FALL</span><h2>Sanktion ausführen</h2><p>Die Aktion wird sofort auf Discord ausgeführt und protokolliert.</p>
+    <div class="form-grid">
+      <label class="field full"><span>Discord-Benutzer-ID</span><input class="input" name="user_id" inputmode="numeric" pattern="[0-9]+" required></label>
+      <label class="field"><span>Aktion</span><select class="input" name="action"><option value="warn">Verwarnung</option><option value="timeout">Timeout</option><option value="kick">Kick</option><option value="ban">Ban</option></select></label>
+      <label class="field"><span>Dauer (Minuten)</span><input class="input" name="duration_minutes" type="number" min="1" max="40320" value="10"></label>
+      <label class="field full"><span>Grund</span><textarea class="input" name="reason" rows="4" required minlength="2" maxlength="1000"></textarea></label>
+    </div>
+    <div class="form-actions"><button class="button ghost" value="cancel">Abbrechen</button><button class="button danger" type="submit" value="default">Sanktion ausführen</button></div>
+  </form>
+</dialog>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}zyrahd.net · Dein Server. Unter Kontrolle.{% endblock %}
+{% block page %}landing{% endblock %}
+{% block content %}
+<header class="landing-nav">
+  <a class="brand" href="/">
+    <span class="brand-mark">Z</span>
+    <span>zyrahd<span class="brand-dot">.net</span></span>
+  </a>
+  <div class="nav-actions">
+    <span class="status-pill"><span class="live-dot"></span> System bereit</span>
+    {% if user %}
+      <a class="button ghost" href="{{ url_for('main.dashboard') }}">Dashboard öffnen</a>
+    {% else %}
+      <a class="button small" href="{{ url_for('auth.login') }}">Mit Discord anmelden</a>
+    {% endif %}
+  </div>
+</header>
+
+<main class="landing">
+  <section class="hero">
+    <div class="eyebrow reveal"><span>✦</span> Discord neu gedacht</div>
+    <h1 class="reveal delay-1">Dein Server.<br><span>Perfekt orchestriert.</span></h1>
+    <p class="hero-copy reveal delay-2">
+      Tickets, Sicherheit, Moderation und dein Team in einer schnellen,
+      eleganten Kommandozentrale.
+    </p>
+    <div class="hero-actions reveal delay-3">
+      {% if user %}
+        <a class="button large glow" href="{{ url_for('main.dashboard') }}">Zum Dashboard <span>→</span></a>
+      {% elif oauth_ready %}
+        <a class="button large glow" href="{{ url_for('auth.login') }}">
+          <span class="discord-glyph">⌁</span> Mit Discord starten
+        </a>
+      {% else %}
+        <span class="button large disabled">OAuth2 in .env einrichten</span>
+      {% endif %}
+      <a class="text-link" href="#features">Funktionen entdecken <span>↓</span></a>
+    </div>
+
+    <div class="hero-orbit" aria-hidden="true">
+      <div class="orbit-ring ring-one"></div>
+      <div class="orbit-ring ring-two"></div>
+      <div class="core-logo"><span>Z</span><i></i></div>
+      <div class="orbit-card orbit-ticket"><b>24</b><span>Offene Tickets</span></div>
+      <div class="orbit-card orbit-shield"><b>99.9%</b><span>Schutz aktiv</span></div>
+      <div class="orbit-card orbit-users"><b>1.248</b><span>Mitglieder</span></div>
+    </div>
+  </section>
+
+  <section id="features" class="feature-grid">
+    <article class="feature-card reveal">
+      <div class="feature-icon purple">🎫</div>
+      <span class="feature-label">Support</span>
+      <h2>Tickets ohne Reibung</h2>
+      <p>Individuelle Formulare, Live-Verlauf und Verwaltung direkt aus Discord oder dem Web.</p>
+      <div class="mini-wave"></div>
+    </article>
+    <article class="feature-card reveal delay-1">
+      <div class="feature-icon rose">◈</div>
+      <span class="feature-label">Sicherheit</span>
+      <h2>Wachsam. Rund um die Uhr.</h2>
+      <p>Intelligente Wortfilter, Anti-Spam und nachvollziehbare Sanktionen schützen deine Community.</p>
+      <div class="shield-pulse"><i></i><i></i><i></i></div>
+    </article>
+    <article class="feature-card reveal delay-2">
+      <div class="feature-icon cyan">↗</div>
+      <span class="feature-label">Insights</span>
+      <h2>Klarheit in Echtzeit</h2>
+      <p>Aktivität, Ticketvolumen und Teamleistung auf einen Blick – responsiv auf jedem Gerät.</p>
+      <div class="bars"><i></i><i></i><i></i><i></i><i></i></div>
+    </article>
+  </section>
+</main>
+
+<footer class="landing-footer">
+  <a class="brand compact" href="/"><span class="brand-mark">Z</span> zyrahd.net</a>
+  <span>Eine Kommandozentrale für starke Communities.</span>
+</footer>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} · zyrahd.net{% endblock %}
+{% block page %}error{% endblock %}
+{% block content %}
+<main class="error-page">
+  <a class="brand" href="/"><span class="brand-mark">Z</span><span>zyrahd<span class="brand-dot">.net</span></span></a>
+  <div class="error-orb"><span>{{ code }}</span></div>
+  <span class="eyebrow small">ETWAS IST SCHIEFGEGANGEN</span>
+  <h1>{{ title }}</h1>
+  <p>{{ message }}</p>
+  <a href="/" class="button large">Zur Startseite</a>
+</main>
+{% endblock %}
