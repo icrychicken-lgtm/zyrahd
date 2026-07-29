@@ -69,6 +69,11 @@
     return `vor ${Math.floor(seconds / 86400)} Tag(en)`;
   };
 
+  const uniqueId = () => {
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+    return `field-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  };
+
   function initializePickers() {
     document.querySelectorAll(".resource-picker").forEach((picker) => {
       picker._selected = [];
@@ -118,7 +123,7 @@
     });
     options.innerHTML = items.map((item) => {
       const selected = picker._selected.includes(String(item.id));
-      const meta = item.type ? item.type : (item.username && item.username !== item.name ? `@${item.username}` : "");
+      const meta = item.banned ? "Gesperrt" : (item.type ? item.type : (item.username && item.username !== item.name ? `@${item.username}` : ""));
       return `<button type="button" class="picker-option ${selected ? "selected" : ""}" data-value="${escapeHtml(item.id)}">
         <i></i><span>${escapeHtml(item.name)}</span><small>${escapeHtml(meta)}</small>${selected ? "<b>✓</b>" : ""}
       </button>`;
@@ -165,7 +170,7 @@
     const tags = picker.querySelector(".picker-tags");
     tags.innerHTML = multiple ? selectedItems.map((item) =>
       `<span class="picker-tag">${escapeHtml(item.name)}<button type="button" data-remove="${escapeHtml(item.id)}">×</button></span>`
-    ).join("") : "";
+    ).join("") : (selectedItems.length ? '<button type="button" class="picker-clear">Auswahl entfernen</button>' : "");
     if (multiple && selectedItems.length > 1) {
       tags.insertAdjacentHTML("beforeend", '<button type="button" class="picker-clear">Alle entfernen</button>');
     }
@@ -341,14 +346,17 @@
     const form = document.querySelector('[data-form="ticket-type"]');
     if (!form) return;
     form.reset();
+    form.querySelectorAll(".resource-picker").forEach((picker) => setPickerValue(picker, []));
     fillForm(form, {
       id: "", emoji: "🎫", color: "#8b5cf6", enabled: true,
       max_open_per_user: 1, cooldown_minutes: 10, inactivity_hours: 72,
+      channel_name_format: "ticket-{number}-{user}", priority: "normal",
+      ping_roles: true,
       greeting: "Willkommen {mention}! Das Team ist gleich für dich da.",
     });
     document.querySelectorAll("[data-ticket-type]").forEach((button) => button.classList.remove("active"));
     document.querySelector("[data-editor-title]").textContent = "Neue Ticket-Art";
-    renderFormFields([{ id: crypto.randomUUID(), label: "Wie können wir helfen?", type: "long", required: true, placeholder: "", min_length: 1, max_length: 1000 }]);
+    renderFormFields([{ id: uniqueId(), label: "Wie können wir helfen?", type: "long", required: true, placeholder: "", min_length: 1, max_length: 1000 }]);
     form.querySelector('[name="name"]').focus();
   }
 
@@ -356,11 +364,18 @@
     const target = document.querySelector("[data-form-fields]");
     if (!target) return;
     target.innerHTML = fields.map((field) => `
-      <div class="form-field-row" data-field-id="${escapeHtml(field.id || crypto.randomUUID())}">
-        <input data-field="label" maxlength="45" required value="${escapeHtml(field.label)}" placeholder="Frage">
-        <select data-field="type"><option value="short" ${field.type !== "long" ? "selected" : ""}>Kurz</option><option value="long" ${field.type === "long" ? "selected" : ""}>Lang</option></select>
-        <label class="permission-check"><input type="checkbox" data-field="required" ${field.required ? "checked" : ""}> Pflicht</label>
-        <button type="button" class="remove-row" title="Feld entfernen">×</button>
+      <div class="form-field-row" data-field-id="${escapeHtml(field.id || uniqueId())}">
+        <div class="form-field-main">
+          <input data-field="label" maxlength="45" required value="${escapeHtml(field.label)}" placeholder="Frage">
+          <select data-field="type"><option value="short" ${field.type !== "long" ? "selected" : ""}>Kurz</option><option value="long" ${field.type === "long" ? "selected" : ""}>Lang</option></select>
+          <label class="permission-check"><input type="checkbox" data-field="required" ${field.required ? "checked" : ""}> Pflicht</label>
+          <button type="button" class="remove-row" title="Feld entfernen">×</button>
+        </div>
+        <div class="form-field-options">
+          <input data-field="placeholder" maxlength="100" value="${escapeHtml(field.placeholder || "")}" placeholder="Platzhalter (optional)">
+          <label>Min. <input type="number" data-field="min_length" min="0" max="4000" value="${Number(field.min_length || 0)}"></label>
+          <label>Max. <input type="number" data-field="max_length" min="1" max="4000" value="${Number(field.max_length || (field.type === "long" ? 1000 : 200))}"></label>
+        </div>
       </div>`).join("");
     target.querySelectorAll(".remove-row").forEach((button) => button.addEventListener("click", () => button.closest(".form-field-row").remove()));
   }
@@ -371,9 +386,9 @@
       label: row.querySelector('[data-field="label"]').value,
       type: row.querySelector('[data-field="type"]').value,
       required: row.querySelector('[data-field="required"]').checked,
-      placeholder: "",
-      min_length: 0,
-      max_length: row.querySelector('[data-field="type"]').value === "long" ? 1000 : 200,
+      placeholder: row.querySelector('[data-field="placeholder"]').value,
+      min_length: Number(row.querySelector('[data-field="min_length"]').value),
+      max_length: Number(row.querySelector('[data-field="max_length"]').value),
     }));
   }
 
@@ -456,6 +471,12 @@
     try {
       const data = await api(`/api/settings/${area}`);
       fillForm(form, data.settings);
+      if (area === "security") {
+        const enabled = ["anti_spam", "anti_invites", "anti_links", "anti_caps"]
+          .some((key) => Boolean(data.settings[key]));
+        const score = document.querySelector(".security-score");
+        if (score) score.lastChild.textContent = enabled ? " Schutz aktiv" : " Schutz pausiert";
+      }
     } catch (error) { toast(error.message, "error"); }
   }
 
@@ -510,6 +531,11 @@
       if (image) {
         image.src = form.elements.image_url.value || "";
         image.classList.toggle("visible", Boolean(form.elements.image_url.value));
+      }
+      const thumbnail = document.querySelector("[data-embed-preview-thumbnail]");
+      if (thumbnail) {
+        thumbnail.src = form.elements.thumbnail_url.value || "";
+        thumbnail.classList.toggle("visible", Boolean(form.elements.thumbnail_url.value));
       }
     };
     form.addEventListener("input", render);
@@ -576,7 +602,10 @@
   }
 
   function setupActions() {
-    document.querySelectorAll('[data-action="toggle-sidebar"]').forEach((button) => button.addEventListener("click", () => document.querySelector("#sidebar")?.classList.toggle("open")));
+    document.querySelectorAll('[data-action="toggle-sidebar"]').forEach((button) => button.addEventListener("click", () => {
+      const open = document.querySelector("#sidebar")?.classList.toggle("open");
+      document.body.classList.toggle("sidebar-open", Boolean(open));
+    }));
     document.querySelectorAll('[data-action="refresh"]').forEach((button) => button.addEventListener("click", () => window.location.reload()));
     document.querySelector('[data-action="new-ticket-type"]')?.addEventListener("click", newTicketType);
     document.querySelector('[data-action="delete-ticket-type"]')?.addEventListener("click", deleteTicketType);
@@ -588,8 +617,11 @@
         label: row.querySelector('[data-field="label"]').value,
         type: row.querySelector('[data-field="type"]').value,
         required: row.querySelector('[data-field="required"]').checked,
+        placeholder: row.querySelector('[data-field="placeholder"]').value,
+        min_length: Number(row.querySelector('[data-field="min_length"]').value),
+        max_length: Number(row.querySelector('[data-field="max_length"]').value),
       }));
-      fields.push({ id: crypto.randomUUID(), label: "", type: "short", required: true });
+      fields.push({ id: uniqueId(), label: "", type: "short", required: true, placeholder: "", min_length: 0, max_length: 200 });
       renderFormFields(fields);
     });
     document.querySelector('[data-action="show-word-filter"]')?.addEventListener("click", () => document.querySelector('[data-form="word-filter"]')?.classList.toggle("visible"));
@@ -608,7 +640,11 @@
       modal?.classList.remove("open"); modal?.setAttribute("aria-hidden", "true");
     }));
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") document.querySelector(".modal.open")?.classList.remove("open");
+      if (event.key === "Escape") {
+        const modal = document.querySelector(".modal.open");
+        modal?.classList.remove("open");
+        modal?.setAttribute("aria-hidden", "true");
+      }
     });
   }
 
@@ -639,13 +675,25 @@
           data.answers = {};
           form.querySelectorAll("[data-answer]").forEach((input) => { data.answers[input.dataset.answer] = input.value; });
           result = await api("/api/tickets", { method: "POST", body: data });
-          document.querySelector('[data-modal="web-ticket"]')?.classList.remove("open");
+          const modal = document.querySelector('[data-modal="web-ticket"]');
+          modal?.classList.remove("open");
+          modal?.setAttribute("aria-hidden", "true");
           loadTickets();
+          loadOverview();
         }
         if (result) toast(result.message);
-        if (kind === "word-filter") { form.reset(); form.classList.remove("visible"); loadWordFilters(); }
+        if (kind === "word-filter") {
+          form.reset();
+          form.querySelectorAll(".resource-picker").forEach((picker) => setPickerValue(picker, []));
+          form.classList.remove("visible");
+          loadWordFilters();
+        }
         if (kind === "moderation") loadModeration();
-        if (kind === "announcement") { form.reset(); loadAnnouncements(); }
+        if (kind === "announcement") {
+          form.reset();
+          form.querySelectorAll(".resource-picker").forEach((picker) => setPickerValue(picker, []));
+          loadAnnouncements();
+        }
         if (kind === "permissions") loadPermissions();
       } catch (error) { toast(error.message, "error"); } finally { busy(button, false); }
     }));

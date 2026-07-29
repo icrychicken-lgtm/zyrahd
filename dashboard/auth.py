@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import secrets
+import time
 from urllib.parse import urlencode
 
 import requests
@@ -102,6 +103,7 @@ def callback():
     session.permanent = True
     session["discord_user"] = user
     session["discord_roles"] = member.get("roles", [])
+    session["roles_checked_at"] = time.time()
     session["discord_member"] = {
         "nick": member.get("nick"),
         "joined_at": member.get("joined_at"),
@@ -115,3 +117,41 @@ def logout():
     session.clear()
     flash("Du wurdest sicher abgemeldet.", "success")
     return redirect(url_for("pages.index"))
+
+
+def refresh_member_session(max_age_seconds: int = 60) -> bool:
+    """Refresh guild membership and roles used for authorization.
+
+    Discord outages do not invalidate an otherwise valid session, but a
+    confirmed 404 immediately revokes dashboard access.
+    """
+    user = session.get("discord_user")
+    if not user:
+        return True
+    last_check = float(session.get("roles_checked_at", 0))
+    if time.time() - last_check < max_age_seconds:
+        return True
+    try:
+        response = requests.get(
+            f"{DISCORD_API}/guilds/{settings.guild_id}/members/{user['id']}",
+            headers={"Authorization": f"Bot {settings.discord_bot_token}"},
+            timeout=8,
+        )
+    except requests.RequestException:
+        return True
+    if response.status_code == 404:
+        session.clear()
+        return False
+    if not response.ok:
+        return True
+    try:
+        member = response.json()
+        session["discord_roles"] = member.get("roles", [])
+        session["discord_member"] = {
+            "nick": member.get("nick"),
+            "joined_at": member.get("joined_at"),
+        }
+        session["roles_checked_at"] = time.time()
+    except (TypeError, ValueError):
+        return True
+    return True

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class TicketPanelView(discord.ui.View):
-    def __init__(self, service: "BotService"):
+    def __init__(self, service: BotService):
         super().__init__(timeout=None)
         self.service = service
 
@@ -38,7 +38,7 @@ class TicketPanelView(discord.ui.View):
 
 
 class TicketTypeSelect(discord.ui.Select):
-    def __init__(self, service: "BotService", options: list[discord.SelectOption]):
+    def __init__(self, service: BotService, options: list[discord.SelectOption]):
         self.service = service
         super().__init__(
             placeholder="Ticket-Art auswählen …",
@@ -59,14 +59,14 @@ class TicketTypeSelect(discord.ui.Select):
 
 class TicketTypeSelectView(discord.ui.View):
     def __init__(
-        self, service: "BotService", options: list[discord.SelectOption]
+        self, service: BotService, options: list[discord.SelectOption]
     ) -> None:
         super().__init__(timeout=180)
         self.add_item(TicketTypeSelect(service, options))
 
 
 class TicketModal(discord.ui.Modal):
-    def __init__(self, service: "BotService", ticket_type):
+    def __init__(self, service: BotService, ticket_type):
         super().__init__(title=ticket_type.name[:45], timeout=600)
         self.service = service
         self.ticket_type_id = ticket_type.id
@@ -121,7 +121,7 @@ class TicketModal(discord.ui.Modal):
 
 
 class TicketControlView(discord.ui.View):
-    def __init__(self, service: "BotService"):
+    def __init__(self, service: BotService):
         super().__init__(timeout=None)
         self.service = service
 
@@ -166,7 +166,7 @@ class TicketControlView(discord.ui.View):
 
 
 class VerifyView(discord.ui.View):
-    def __init__(self, service: "BotService", label: str = "Verifizieren", emoji="✅"):
+    def __init__(self, service: BotService, label: str = "Verifizieren", emoji="✅"):
         super().__init__(timeout=None)
         self.service = service
         button = discord.ui.Button(
@@ -188,7 +188,7 @@ class VerifyView(discord.ui.View):
 
 
 class AnnouncementConfirmView(discord.ui.View):
-    def __init__(self, service: "BotService", announcement_id: int):
+    def __init__(self, service: BotService, announcement_id: int):
         super().__init__(timeout=None)
         self.service = service
         self.announcement_id = announcement_id

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from flask import Flask, request
+from sqlalchemy import text as sql_text
 
 from database.migrations import run_migrations
 from database.models import AuditLog, GuildConfig, TicketType, db
@@ -85,6 +86,10 @@ def init_database(app: Flask, guild_id: int) -> None:
         # create_all is intentionally non-destructive: existing data and columns
         # remain untouched. Explicit migrations can be added for future schemas.
         db.create_all()
+        if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:"):
+            with db.engine.connect() as connection:
+                connection.execute(sql_text("PRAGMA journal_mode=WAL"))
+                connection.execute(sql_text("PRAGMA busy_timeout=30000"))
         run_migrations()
         seed_defaults(str(guild_id))
 

@@ -6,10 +6,10 @@ import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, request
 
 from config import settings
-from dashboard.internal_client import BotUnavailable, bot_request
+from dashboard.internal_client import BotActionError, BotUnavailable, bot_request
 from dashboard.permissions import (
     PERMISSIONS,
     current_user,
@@ -50,6 +50,11 @@ def handle_api_error(error: ApiError):
 @api_bp.errorhandler(BotUnavailable)
 def handle_bot_unavailable(error: BotUnavailable):
     return jsonify(error=str(error)), 503
+
+
+@api_bp.errorhandler(BotActionError)
+def handle_bot_action_error(error: BotActionError):
+    return jsonify(error=str(error)), error.status
 
 
 def body() -> dict[str, Any]:
@@ -103,6 +108,34 @@ def config() -> GuildConfig:
     return result
 
 
+def validate_resources(
+    values: dict[str, Any],
+    specs: dict[str, tuple[str, set[str] | None, bool]],
+) -> None:
+    """Reject forged or stale Discord resource IDs before persisting them."""
+    resources = bot_request("GET", "/resources")
+    for field, (resource_type, channel_types, multiple) in specs.items():
+        raw_value = values.get(field)
+        requested = raw_value if multiple else [raw_value]
+        requested_ids = {str(value) for value in (requested or []) if value}
+        if not requested_ids:
+            continue
+        available = resources.get(resource_type, [])
+        allowed_ids = {
+            str(item["id"])
+            for item in available
+            if (
+                (resource_type != "roles" or item.get("usable", False))
+                and (channel_types is None or item.get("type") in channel_types)
+            )
+        }
+        if not requested_ids <= allowed_ids:
+            raise ApiError(
+                f"„{field}“ enthält einen gelöschten oder nicht verwendbaren "
+                "Discord-Eintrag."
+            )
+
+
 @api_bp.get("/overview")
 @require_permission("dashboard.open")
 def overview():
@@ -116,9 +149,8 @@ def overview():
     cases_today = db.session.scalar(
         db.select(db.func.count(ModerationCase.id)).where(
             ModerationCase.guild_id == GUILD_ID,
-            ModerationCase.created_at >= now.replace(
-                hour=0, minute=0, second=0, microsecond=0
-            ),
+            ModerationCase.created_at
+            >= now.replace(hour=0, minute=0, second=0, microsecond=0),
         )
     )
     chart = []
@@ -127,7 +159,9 @@ def overview():
         chart.append(
             {
                 "label": day.strftime("%d.%m"),
-                "tickets": sum(1 for ticket in tickets if ticket.created_at.date() == day),
+                "tickets": sum(
+                    1 for ticket in tickets if ticket.created_at.date() == day
+                ),
             }
         )
     recent = db.session.scalars(
@@ -214,6 +248,27 @@ SETTING_PERMISSION = {
     "verify": "server.manage",
     "security": "security.manage",
 }
+SETTING_RESOURCES = {
+    "welcome": {
+        "channel_id": ("channels", {"text", "announcement"}, False),
+        "role_ids": ("roles", None, True),
+    },
+    "verify": {
+        "channel_id": ("channels", {"text", "announcement"}, False),
+        "role_id": ("roles", None, False),
+        "remove_role_ids": ("roles", None, True),
+        "log_channel_id": ("channels", {"text", "announcement"}, False),
+    },
+    "security": {
+        "log_channel_id": ("channels", {"text", "announcement"}, False),
+        "exempt_role_ids": ("roles", None, True),
+        "exempt_channel_ids": (
+            "channels",
+            {"text", "announcement"},
+            True,
+        ),
+    },
+}
 
 
 @api_bp.route("/settings/<area>", methods=["GET", "PUT"])
@@ -239,6 +294,7 @@ def settings_area(area: str):
             raise ApiError(f"„{key}“ ist zu lang.")
     if "color" in updated and not HEX_COLOR.match(str(updated["color"])):
         raise ApiError("Die Farbe muss im Format #8b5cf6 angegeben werden.")
+    validate_resources(updated, SETTING_RESOURCES[area])
     before = current.copy()
     setattr(guild_config, area, updated)
     write_audit(
@@ -278,9 +334,7 @@ def publish_verify():
 def publish_ticket_panel():
     data = body()
     channel_id = text(data, "channel_id", required=True, maximum=24)
-    result = bot_request(
-        "POST", "/ticket-panel/publish", {"channel_id": channel_id}
-    )
+    result = bot_request("POST", "/ticket-panel/publish", {"channel_id": channel_id})
     write_audit(
         GUILD_ID,
         user(),
@@ -365,53 +419,101 @@ def ticket_type_item(item_id: int):
 
 
 def apply_ticket_type(item: TicketType, data: dict[str, Any]) -> None:
+    creating = item.id is None
     item.name = text(data, "name", required=True, maximum=80)
-    item.description = text(data, "description", maximum=200)
-    item.emoji = text(data, "emoji", maximum=32) or "🎫"
-    color = text(data, "color", maximum=7) or "#8b5cf6"
-    if not HEX_COLOR.match(color):
-        raise ApiError("Ungültige Embed-Farbe.")
-    item.color = color
-    item.enabled = bool(data.get("enabled", True))
-    item.category_id = str(data["category_id"]) if data.get("category_id") else None
-    item.support_role_ids = [str(value) for value in data.get("support_role_ids", [])]
-    item.log_channel_id = (
-        str(data["log_channel_id"]) if data.get("log_channel_id") else None
-    )
-    item.transcript_channel_id = (
-        str(data["transcript_channel_id"])
-        if data.get("transcript_channel_id")
-        else None
-    )
-    item.max_open_per_user = integer(data, "max_open_per_user", 1, 1, 20)
-    item.cooldown_minutes = integer(data, "cooldown_minutes", 10, 0, 10080)
-    item.inactivity_hours = integer(data, "inactivity_hours", 72, 0, 8760)
-    item.channel_name_format = (
-        text(data, "channel_name_format", maximum=80) or "ticket-{number}-{user}"
-    )
-    item.greeting = text(data, "greeting", maximum=2000)
-    item.ping_roles = bool(data.get("ping_roles", True))
-    item.priority = str(data.get("priority", "normal"))
-    fields = data.get("form_fields", [])
-    if not isinstance(fields, list) or len(fields) > 5:
-        raise ApiError("Discord unterstützt höchstens fünf Formularfelder.")
-    cleaned_fields = []
-    for index, field in enumerate(fields):
-        if not isinstance(field, dict):
-            raise ApiError("Ungültiges Formularfeld.")
-        label = text(field, "label", required=True, maximum=45)
-        cleaned_fields.append(
-            {
-                "id": str(field.get("id") or f"field-{index}"),
-                "label": label,
-                "type": "long" if field.get("type") == "long" else "short",
-                "required": bool(field.get("required", True)),
-                "placeholder": text(field, "placeholder", maximum=100),
-                "min_length": integer(field, "min_length", 0, 0, 4000),
-                "max_length": integer(field, "max_length", 1000, 1, 4000),
-            }
+    if creating or "description" in data:
+        item.description = text(data, "description", maximum=200)
+    if creating or "emoji" in data:
+        item.emoji = text(data, "emoji", maximum=32) or "🎫"
+    if creating or "color" in data:
+        color = text(data, "color", maximum=7) or "#8b5cf6"
+        if not HEX_COLOR.match(color):
+            raise ApiError("Ungültige Embed-Farbe.")
+        item.color = color
+    if creating or "enabled" in data:
+        item.enabled = bool(data.get("enabled", True))
+    for field_name in ("category_id", "log_channel_id", "transcript_channel_id"):
+        if creating or field_name in data:
+            setattr(
+                item,
+                field_name,
+                str(data[field_name]) if data.get(field_name) else None,
+            )
+    if creating or "support_role_ids" in data:
+        item.support_role_ids = [
+            str(value) for value in data.get("support_role_ids", [])
+        ]
+    if creating or "max_open_per_user" in data:
+        item.max_open_per_user = integer(data, "max_open_per_user", 1, 1, 20)
+    if creating or "cooldown_minutes" in data:
+        item.cooldown_minutes = integer(data, "cooldown_minutes", 10, 0, 10080)
+    if creating or "inactivity_hours" in data:
+        item.inactivity_hours = integer(data, "inactivity_hours", 72, 0, 8760)
+    if creating or "channel_name_format" in data:
+        channel_format = (
+            text(data, "channel_name_format", maximum=80) or "ticket-{number}-{user}"
         )
-    item.form_fields = cleaned_fields
+        try:
+            channel_format.format(number=1, user="mitglied")
+        except (KeyError, ValueError) as exc:
+            raise ApiError(
+                "Das Kanalformat darf nur {number} und {user} verwenden."
+            ) from exc
+        item.channel_name_format = channel_format
+    if creating or "greeting" in data:
+        item.greeting = text(data, "greeting", maximum=2000)
+    if creating or "ping_roles" in data:
+        item.ping_roles = bool(data.get("ping_roles", True))
+    if creating or "priority" in data:
+        priority = str(data.get("priority", "normal"))
+        if priority not in {"low", "normal", "high", "urgent"}:
+            raise ApiError("Ungültige Ticket-Priorität.")
+        item.priority = priority
+    if creating or "form_fields" in data:
+        fields = data.get("form_fields", [])
+        if not isinstance(fields, list) or len(fields) > 5:
+            raise ApiError("Discord unterstützt höchstens fünf Formularfelder.")
+        cleaned_fields = []
+        for index, field in enumerate(fields):
+            if not isinstance(field, dict):
+                raise ApiError("Ungültiges Formularfeld.")
+            label = text(field, "label", required=True, maximum=45)
+            minimum = integer(field, "min_length", 0, 0, 4000)
+            maximum = integer(field, "max_length", 1000, 1, 4000)
+            if minimum > maximum:
+                raise ApiError(
+                    f"Die Mindestlänge von „{label}“ ist größer als die Maximallänge."
+                )
+            cleaned_fields.append(
+                {
+                    "id": str(field.get("id") or f"field-{index}"),
+                    "label": label,
+                    "type": "long" if field.get("type") == "long" else "short",
+                    "required": bool(field.get("required", True)),
+                    "placeholder": text(field, "placeholder", maximum=100),
+                    "min_length": minimum,
+                    "max_length": maximum,
+                }
+            )
+        item.form_fields = cleaned_fields
+    validate_resources(
+        {
+            "category_id": item.category_id,
+            "support_role_ids": item.support_role_ids or [],
+            "log_channel_id": item.log_channel_id,
+            "transcript_channel_id": item.transcript_channel_id,
+        },
+        {
+            "category_id": ("channels", {"category"}, False),
+            "support_role_ids": ("roles", None, True),
+            "log_channel_id": ("channels", {"text", "announcement"}, False),
+            "transcript_channel_id": (
+                "channels",
+                {"text", "announcement"},
+                False,
+            ),
+        },
+    )
 
 
 @api_bp.get("/tickets")
@@ -448,6 +550,8 @@ def create_ticket():
         value = str(answers.get(field["id"], "")).strip()
         if field.get("required") and not value:
             raise ApiError(f"„{field['label']}“ ist ein Pflichtfeld.")
+        if value and len(value) < int(field.get("min_length", 0)):
+            raise ApiError(f"„{field['label']}“ ist zu kurz.")
         if len(value) > int(field.get("max_length", 1000)):
             raise ApiError(f"„{field['label']}“ ist zu lang.")
     result = bot_request(
@@ -548,9 +652,7 @@ def word_filters():
     item = WordFilter(
         guild_id=GUILD_ID,
         phrase=text(data, "phrase", required=True, maximum=120),
-        match_type=(
-            "exact" if data.get("match_type") == "exact" else "contains"
-        ),
+        match_type=("exact" if data.get("match_type") == "exact" else "contains"),
         case_sensitive=bool(data.get("case_sensitive", False)),
         action=str(data.get("action", "delete")),
         timeout_minutes=integer(data, "timeout_minutes", 10, 1, 40320),
@@ -560,9 +662,7 @@ def word_filters():
             str(data["log_channel_id"]) if data.get("log_channel_id") else None
         ),
         exempt_role_ids=[str(value) for value in data.get("exempt_role_ids", [])],
-        exempt_channel_ids=[
-            str(value) for value in data.get("exempt_channel_ids", [])
-        ],
+        exempt_channel_ids=[str(value) for value in data.get("exempt_channel_ids", [])],
         enabled=True,
     )
     if item.action not in {"delete", "warn", "timeout", "kick", "ban"}:
@@ -654,8 +754,14 @@ def send_embed():
         payload=payload,
         created_by_id=str(user()["id"]),
     )
-    result = bot_request("POST", "/embeds", payload)
     db.session.add(template)
+    db.session.commit()
+    try:
+        result = bot_request("POST", "/embeds", payload)
+    except (BotUnavailable, BotActionError):
+        db.session.delete(template)
+        db.session.commit()
+        raise
     write_audit(
         GUILD_ID,
         user(),
@@ -707,20 +813,25 @@ def announcements():
         created_by_name=user().get("global_name") or user().get("username"),
     )
     db.session.add(item)
-    db.session.flush()
-    result = bot_request(
-        "POST",
-        "/announcements",
-        {
-            "announcement_id": item.id,
-            "title": item.title,
-            "content": item.content,
-            "priority": item.priority,
-            "target_role_ids": item.target_role_ids,
-            "channel_id": item.channel_id,
-            "require_confirmation": item.require_confirmation,
-        },
-    )
+    db.session.commit()
+    try:
+        result = bot_request(
+            "POST",
+            "/announcements",
+            {
+                "announcement_id": item.id,
+                "title": item.title,
+                "content": item.content,
+                "priority": item.priority,
+                "target_role_ids": item.target_role_ids,
+                "channel_id": item.channel_id,
+                "require_confirmation": item.require_confirmation,
+            },
+        )
+    except (BotUnavailable, BotActionError):
+        db.session.delete(item)
+        db.session.commit()
+        raise
     item.published_message_id = str(result["message_id"])
     write_audit(
         GUILD_ID,
@@ -758,8 +869,26 @@ def permissions():
     role_id = text(data, "role_id", required=True, maximum=24)
     role_name = text(data, "role_name", required=True, maximum=100)
     selected = data.get("permissions", [])
-    if not isinstance(selected, list) or any(value not in PERMISSIONS for value in selected):
+    if not isinstance(selected, list) or any(
+        value not in PERMISSIONS for value in selected
+    ):
         raise ApiError("Die Berechtigungsauswahl ist ungültig.")
+    validate_resources(
+        {"role_id": role_id},
+        {"role_id": ("roles", None, False)},
+    )
+    resources = bot_request("GET", "/resources")
+    live_role = next(
+        (
+            role
+            for role in resources.get("roles", [])
+            if str(role["id"]) == role_id and role.get("usable")
+        ),
+        None,
+    )
+    if live_role is None:
+        raise ApiError("Die Discord-Rolle ist nicht mehr verwendbar.")
+    role_name = live_role["name"]
     grant = db.session.scalar(
         db.select(DashboardRole).where(
             DashboardRole.guild_id == GUILD_ID, DashboardRole.role_id == role_id

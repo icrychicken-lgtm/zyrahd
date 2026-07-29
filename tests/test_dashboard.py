@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import time
+from types import SimpleNamespace
+
 import pytest
 
+from bot.services import BotService
 from config import Settings
 from dashboard.app import create_app
+from database.models import Ticket, TicketType, db
 
 
 @pytest.fixture()
@@ -26,10 +31,10 @@ def app(tmp_path, monkeypatch):
     )
     monkeypatch.setattr("dashboard.api.GUILD_ID", str(test_settings.guild_id))
     monkeypatch.setattr("dashboard.permissions.settings", test_settings)
-    monkeypatch.setattr(
-        "dashboard.api.bot_request",
-        lambda method, path, payload=None: (
-            {
+
+    def fake_bot_request(method, path, payload=None):
+        if path == "/status":
+            return {
                 "online": True,
                 "guild_name": "Testserver",
                 "members": 120,
@@ -37,10 +42,22 @@ def app(tmp_path, monkeypatch):
                 "guild_icon": None,
                 "latency_ms": 20,
             }
-            if path == "/status"
-            else {"roles": [], "channels": [], "members": []}
-        ),
-    )
+        if path == "/resources":
+            return {
+                "roles": [
+                    {
+                        "id": "654",
+                        "name": "Mitglied",
+                        "usable": True,
+                        "managed": False,
+                    }
+                ],
+                "channels": [{"id": "987", "name": "willkommen", "type": "text"}],
+                "members": [],
+            }
+        return {}
+
+    monkeypatch.setattr("dashboard.api.bot_request", fake_bot_request)
     application = create_app(test_settings)
     application.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
     yield application
@@ -60,6 +77,7 @@ def login(client):
             "avatar_url": "https://cdn.discordapp.com/embed/avatars/0.png",
         }
         session["discord_roles"] = []
+        session["roles_checked_at"] = time.time()
 
 
 def test_health_is_public(client):
@@ -112,3 +130,82 @@ def test_settings_are_saved_and_unknown_keys_rejected(client):
         json={"enabled": True, "arbitrary_id": "not-allowed"},
     )
     assert invalid.status_code == 400
+
+
+def test_ticket_creation_persists_after_discord_channel_is_created(app, monkeypatch):
+    class FakeMember:
+        id = 77
+        display_name = "Test User"
+        mention = "<@77>"
+
+    class FakeChannel:
+        id = 999
+
+        async def send(self, **_kwargs):
+            return SimpleNamespace(id=1000)
+
+        async def delete(self, **_kwargs):
+            raise AssertionError("Successful ticket channel must not be deleted")
+
+    class FakeGuild:
+        default_role = object()
+        me = object()
+
+        def __init__(self):
+            self.channel = FakeChannel()
+
+        def get_member(self, user_id):
+            return FakeMember() if user_id == 77 else None
+
+        def get_channel(self, _channel_id):
+            return None
+
+        def get_role(self, _role_id):
+            return None
+
+        async def create_text_channel(self, *_args, **_kwargs):
+            return self.channel
+
+    guild = FakeGuild()
+    fake_bot = SimpleNamespace(get_guild=lambda _guild_id: guild)
+    monkeypatch.setattr("bot.services.settings", SimpleNamespace(guild_id=123456789))
+    service = BotService(fake_bot, app)
+
+    with app.app_context():
+        ticket_type = db.session.scalar(
+            db.select(TicketType).where(TicketType.name == "Support")
+        )
+        ticket_type_id = ticket_type.id
+
+    import asyncio
+
+    ticket = asyncio.run(
+        service.create_ticket(
+            ticket_type_id,
+            77,
+            "Test User",
+            {"field-0": "Ich brauche Hilfe."},
+        )
+    )
+
+    with app.app_context():
+        stored = db.session.get(Ticket, ticket.id)
+        assert stored is not None
+        assert stored.status == "open"
+        assert stored.channel_id == "999"
+
+
+def test_removed_guild_member_loses_dashboard_session(client, monkeypatch):
+    login(client)
+    with client.session_transaction() as session:
+        session["roles_checked_at"] = 0
+    monkeypatch.setattr(
+        "dashboard.auth.requests.get",
+        lambda *_args, **_kwargs: SimpleNamespace(status_code=404, ok=False),
+    )
+
+    response = client.get("/dashboard")
+
+    assert response.status_code == 302
+    with client.session_transaction() as session:
+        assert "discord_user" not in session

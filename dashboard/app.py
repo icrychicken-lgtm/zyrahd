@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import logging
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFError, CSRFProtect
 
 from config import Settings, settings
 from dashboard.api import api_bp
-from dashboard.auth import auth_bp
+from dashboard.auth import auth_bp, refresh_member_session
 from dashboard.routes import pages_bp
 from database.manager import init_database
 
@@ -34,6 +34,19 @@ def create_app(app_settings: Settings = settings) -> Flask:
     app.register_blueprint(pages_bp)
     app.register_blueprint(api_bp)
 
+    @app.before_request
+    def refresh_discord_roles():
+        if not (
+            request.path.startswith("/dashboard") or request.path.startswith("/api/")
+        ):
+            return None
+        if refresh_member_session():
+            return None
+        if request.path.startswith("/api/"):
+            return jsonify(error="Du bist nicht mehr Mitglied des Servers."), 401
+        flash("Deine Servermitgliedschaft konnte nicht mehr bestätigt werden.", "error")
+        return redirect(url_for("pages.index"))
+
     @app.get("/health")
     @limiter.exempt
     def health():
@@ -48,7 +61,7 @@ def create_app(app_settings: Settings = settings) -> Flask:
             "camera=(), microphone=(), geolocation=()"
         )
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; img-src 'self' https://cdn.discordapp.com data:; "
+            "default-src 'self'; img-src 'self' https: data:; "
             "style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; "
             "frame-ancestors 'none'; base-uri 'self'; form-action 'self' "
             "https://discord.com"
@@ -58,7 +71,9 @@ def create_app(app_settings: Settings = settings) -> Flask:
     @app.errorhandler(CSRFError)
     def csrf_error(error: CSRFError):
         if request.path.startswith("/api/"):
-            return jsonify(error="Sicherheitsprüfung fehlgeschlagen. Bitte neu laden."), 400
+            return jsonify(
+                error="Sicherheitsprüfung fehlgeschlagen. Bitte neu laden."
+            ), 400
         return render_template("errors/400.html"), 400
 
     @app.errorhandler(403)

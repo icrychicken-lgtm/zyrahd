@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
 import re
 import unicodedata
@@ -11,6 +12,7 @@ from typing import Any
 
 import discord
 from flask import Flask
+from sqlalchemy.exc import IntegrityError
 
 from config import settings
 from database.manager import write_audit
@@ -32,6 +34,10 @@ class BotService:
         self.web_app = web_app
         self.guild_id = settings.guild_id
         self._message_windows: dict[int, deque[datetime]] = defaultdict(deque)
+        self._ticket_locks: dict[tuple[int, int], asyncio.Lock] = defaultdict(
+            asyncio.Lock
+        )
+        self._filter_violations: dict[tuple[int, int], int] = defaultdict(int)
 
     @property
     def guild(self) -> discord.Guild:
@@ -62,7 +68,7 @@ class BotService:
             "latency_ms": round(self.bot.latency * 1000),
         }
 
-    def resources(self) -> dict[str, Any]:
+    async def resources(self) -> dict[str, Any]:
         guild = self.guild
         bot_member = guild.me
         top_position = bot_member.top_role.position if bot_member else 0
@@ -115,6 +121,22 @@ class BotService:
             for member in guild.members
             if not member.bot
         ]
+        try:
+            bans = [entry async for entry in guild.bans(limit=1000)]
+        except discord.HTTPException:
+            bans = []
+        members.extend(
+            {
+                "id": str(entry.user.id),
+                "name": entry.user.global_name or entry.user.name,
+                "username": entry.user.name,
+                "avatar": str(entry.user.display_avatar.url),
+                "bot": entry.user.bot,
+                "banned": True,
+            }
+            for entry in bans
+            if not entry.user.bot
+        )
         members.sort(key=lambda item: item["name"].lower())
         return {"roles": roles, "channels": channels, "members": members}
 
@@ -154,9 +176,24 @@ class BotService:
         creator_name: str,
         answers: dict[str, Any],
     ) -> Ticket:
+        lock = self._ticket_locks[(ticket_type_id, creator_id)]
+        async with lock:
+            return await self._create_ticket_locked(
+                ticket_type_id, creator_id, creator_name, answers
+            )
+
+    async def _create_ticket_locked(
+        self,
+        ticket_type_id: int,
+        creator_id: int,
+        creator_name: str,
+        answers: dict[str, Any],
+    ) -> Ticket:
         guild = self.guild
         try:
-            member = guild.get_member(creator_id) or await guild.fetch_member(creator_id)
+            member = guild.get_member(creator_id) or await guild.fetch_member(
+                creator_id
+            )
         except discord.NotFound as exc:
             raise ValueError("Du bist nicht mehr Mitglied dieses Servers.") from exc
 
@@ -175,7 +212,7 @@ class BotService:
                     Ticket.guild_id == str(self.guild_id),
                     Ticket.ticket_type_id == ticket_type.id,
                     Ticket.creator_id == str(creator_id),
-                    Ticket.status.in_(("open", "claimed", "waiting")),
+                    Ticket.status.in_(("creating", "open", "claimed", "waiting")),
                 )
             )
             if (open_count or 0) >= ticket_type.max_open_per_user:
@@ -212,20 +249,23 @@ class BotService:
                 ticket_type_id=ticket_type.id,
                 creator_id=str(creator_id),
                 creator_name=creator_name,
-                status="open",
+                status="creating",
                 priority=ticket_type.priority,
                 form_answers=answers,
             )
             db.session.add(ticket)
             db.session.flush()
             ticket_number = ticket.id
-            category_id = int(ticket_type.category_id) if ticket_type.category_id else None
+            category_id = (
+                int(ticket_type.category_id) if ticket_type.category_id else None
+            )
             support_role_ids = list(ticket_type.support_role_ids or [])
             channel_format = ticket_type.channel_name_format
             greeting = ticket_type.greeting
             color = ticket_type.color
             fields = list(ticket_type.form_fields or [])
             ping_roles = ticket_type.ping_roles
+            db.session.commit()
 
         category = guild.get_channel(category_id) if category_id else None
         if category is not None and not isinstance(category, discord.CategoryChannel):
@@ -261,9 +301,10 @@ class BotService:
         channel_name = channel_format.format(
             number=ticket_number, user=member.display_name
         )
-        channel_name = re.sub(r"[^a-z0-9äöüß-]+", "-", channel_name.lower()).strip(
-            "-"
-        )[:90] or f"ticket-{ticket_number}"
+        channel_name = (
+            re.sub(r"[^a-z0-9äöüß-]+", "-", channel_name.lower()).strip("-")[:90]
+            or f"ticket-{ticket_number}"
+        )
         try:
             channel = await guild.create_text_channel(
                 channel_name,
@@ -282,20 +323,6 @@ class BotService:
                 "Der Ticket-Kanal konnte nicht erstellt werden. Prüfe die Bot-Rechte."
             )
 
-        with self.web_app.app_context():
-            stored = db.session.get(Ticket, ticket_number)
-            stored.channel_id = str(channel.id)
-            write_audit(
-                str(self.guild_id),
-                {"id": str(creator_id), "username": creator_name},
-                "Ticket erstellt",
-                "tickets",
-                target=f"ZY-{ticket_number:05d}",
-                after={"ticket_type_id": ticket_type_id, "channel_id": str(channel.id)},
-            )
-            db.session.commit()
-            ticket = stored
-
         embed = discord.Embed(
             title=f"{ticket_type.emoji} {ticket_type.name}",
             description=greeting.format(
@@ -313,17 +340,51 @@ class BotService:
                     inline=False,
                 )
         embed.set_footer(text=f"Ticket ZY-{ticket_number:05d}")
-        mentions = " ".join(role.mention for role in support_roles) if ping_roles else ""
+        mentions = (
+            " ".join(role.mention for role in support_roles) if ping_roles else ""
+        )
         from bot.views import TicketControlView
 
-        await channel.send(
-            content=f"{member.mention} {mentions}".strip(),
-            embed=embed,
-            view=TicketControlView(self),
-            allowed_mentions=discord.AllowedMentions(
-                users=True, roles=ping_roles, everyone=False
-            ),
-        )
+        try:
+            await channel.send(
+                content=f"{member.mention} {mentions}".strip(),
+                embed=embed,
+                view=TicketControlView(self),
+                allowed_mentions=discord.AllowedMentions(
+                    users=True, roles=ping_roles, everyone=False
+                ),
+            )
+            with self.web_app.app_context():
+                stored = db.session.get(Ticket, ticket_number)
+                if stored is None:
+                    raise RuntimeError("Der Ticket-Datensatz ist nicht mehr vorhanden.")
+                stored.channel_id = str(channel.id)
+                stored.status = "open"
+                write_audit(
+                    str(self.guild_id),
+                    {"id": str(creator_id), "username": creator_name},
+                    "Ticket erstellt",
+                    "tickets",
+                    target=f"ZY-{ticket_number:05d}",
+                    after={
+                        "ticket_type_id": ticket_type_id,
+                        "channel_id": str(channel.id),
+                    },
+                )
+                db.session.commit()
+                ticket = stored
+        except Exception:
+            try:
+                await channel.delete(reason="Unvollständiges Ticket – Rollback")
+            except discord.HTTPException:
+                pass
+            with self.web_app.app_context():
+                db.session.rollback()
+                stored = db.session.get(Ticket, ticket_number)
+                if stored:
+                    db.session.delete(stored)
+                    db.session.commit()
+            raise
         return ticket
 
     def ticket_for_channel(self, channel_id: int | None) -> Ticket | None:
@@ -393,6 +454,35 @@ class BotService:
                 if ticket.ticket_type.transcript_channel_id
                 else None
             )
+            number = ticket.id
+
+        guild = self.guild
+        channel = guild.get_channel(channel_id) if channel_id else None
+        creator = guild.get_member(creator_id)
+        if isinstance(channel, discord.TextChannel):
+            try:
+                if creator:
+                    await channel.set_permissions(
+                        creator,
+                        view_channel=True,
+                        send_messages=False,
+                        read_message_history=True,
+                        reason=f"Ticket ZY-{number:05d} geschlossen",
+                    )
+                if not channel.name.startswith("closed-"):
+                    await channel.edit(
+                        name=f"closed-{channel.name}"[:100],
+                        reason=f"Ticket geschlossen: {reason}",
+                    )
+            except discord.HTTPException as exc:
+                raise ValueError(
+                    "Discord konnte den Ticket-Kanal nicht schließen."
+                ) from exc
+
+        with self.web_app.app_context():
+            ticket = db.session.get(Ticket, ticket_id)
+            if ticket is None:
+                raise ValueError("Ticket nicht gefunden.")
             ticket.status = "closed"
             ticket.closed_at = datetime.now(UTC)
             ticket.close_reason = reason
@@ -417,42 +507,31 @@ class BotService:
                 f"{message.content}"
                 for message in messages
             )
-            number = ticket.id
 
-        guild = self.guild
-        channel = guild.get_channel(channel_id) if channel_id else None
-        creator = guild.get_member(creator_id)
         if isinstance(channel, discord.TextChannel):
-            if creator:
-                await channel.set_permissions(
-                    creator,
-                    view_channel=True,
-                    send_messages=False,
-                    read_message_history=True,
-                    reason=f"Ticket ZY-{number:05d} geschlossen",
+            try:
+                await channel.send(
+                    embed=discord.Embed(
+                        title="🔒 Ticket geschlossen",
+                        description=f"**Grund:** {reason}",
+                        color=discord.Color.dark_grey(),
+                        timestamp=datetime.now(UTC),
+                    )
                 )
-            if not channel.name.startswith("closed-"):
-                await channel.edit(
-                    name=f"closed-{channel.name}"[:100],
-                    reason=f"Ticket geschlossen: {reason}",
-                )
-            await channel.send(
-                embed=discord.Embed(
-                    title="🔒 Ticket geschlossen",
-                    description=f"**Grund:** {reason}",
-                    color=discord.Color.dark_grey(),
-                    timestamp=datetime.now(UTC),
-                )
-            )
+            except discord.HTTPException:
+                pass
         transcript_channel = guild.get_channel(transcript_id) if transcript_id else None
         if isinstance(transcript_channel, discord.TextChannel):
             file = discord.File(
                 io.BytesIO(transcript.encode("utf-8")),
                 filename=f"ticket-ZY-{number:05d}.txt",
             )
-            await transcript_channel.send(
-                f"Transcript für **ZY-{number:05d}**", file=file
-            )
+            try:
+                await transcript_channel.send(
+                    f"Transcript für **ZY-{number:05d}**", file=file
+                )
+            except discord.HTTPException:
+                pass
 
     async def post_web_message(
         self,
@@ -469,8 +548,24 @@ class BotService:
             if ticket.status in {"closed", "archived"} or not ticket.channel_id:
                 raise ValueError("Dieses Ticket ist nicht mehr aktiv.")
             channel_id = int(ticket.channel_id)
+            stored_message = TicketMessage(
+                ticket_id=ticket_id,
+                author_id=author_id,
+                author_name=author_name,
+                author_avatar=author_avatar,
+                content=content,
+                source="web",
+            )
+            db.session.add(stored_message)
+            db.session.commit()
+            stored_message_id = stored_message.id
         channel = self.guild.get_channel(channel_id)
         if not isinstance(channel, discord.TextChannel):
+            with self.web_app.app_context():
+                pending = db.session.get(TicketMessage, stored_message_id)
+                if pending:
+                    db.session.delete(pending)
+                    db.session.commit()
             raise ValueError("Der Ticket-Kanal existiert nicht mehr.")
         embed = discord.Embed(
             description=content,
@@ -478,21 +573,17 @@ class BotService:
             timestamp=datetime.now(UTC),
         )
         embed.set_author(name=f"{author_name} · Web-Dashboard", icon_url=author_avatar)
-        message = await channel.send(
-            embed=embed, allowed_mentions=discord.AllowedMentions.none()
-        )
-        with self.web_app.app_context():
-            db.session.add(
-                TicketMessage(
-                    ticket_id=ticket_id,
-                    author_id=author_id,
-                    author_name=author_name,
-                    author_avatar=author_avatar,
-                    content=content,
-                    source="web",
-                )
+        try:
+            message = await channel.send(
+                embed=embed, allowed_mentions=discord.AllowedMentions.none()
             )
-            db.session.commit()
+        except discord.HTTPException:
+            with self.web_app.app_context():
+                pending = db.session.get(TicketMessage, stored_message_id)
+                if pending:
+                    db.session.delete(pending)
+                    db.session.commit()
+            raise
         return {"message_id": str(message.id)}
 
     async def mirror_discord_message(self, message: discord.Message) -> None:
@@ -532,13 +623,40 @@ class BotService:
             raise ValueError("Ungültige Discord-Benutzer-ID.") from exc
         action = payload["action"]
         reason = payload["reason"]
+        if action not in {"warn", "timeout", "untimeout", "kick", "ban", "unban"}:
+            raise ValueError("Unbekannte Moderationsaktion.")
         member = guild.get_member(user_id)
         if action != "unban" and member is None:
             try:
                 member = await guild.fetch_member(user_id)
             except discord.NotFound as exc:
-                raise ValueError("Der Benutzer wurde auf dem Server nicht gefunden.") from exc
+                raise ValueError(
+                    "Der Benutzer wurde auf dem Server nicht gefunden."
+                ) from exc
         audit_reason = f"{reason} | Moderator: {payload['moderator_name']}"
+        with self.web_app.app_context():
+            case = ModerationCase(
+                guild_id=str(self.guild_id),
+                user_id=str(user_id),
+                user_name=getattr(member, "display_name", str(user_id)),
+                moderator_id=str(payload["moderator_id"]),
+                moderator_name=payload["moderator_name"],
+                action=action,
+                reason=reason,
+                duration_minutes=payload.get("duration_minutes"),
+                status="pending",
+            )
+            db.session.add(case)
+            db.session.commit()
+            case_id = case.id
+
+        def discard_pending_case() -> None:
+            with self.web_app.app_context():
+                pending = db.session.get(ModerationCase, case_id)
+                if pending and pending.status == "pending":
+                    db.session.delete(pending)
+                    db.session.commit()
+
         try:
             if action == "warn":
                 try:
@@ -558,28 +676,20 @@ class BotService:
                 await member.ban(reason=audit_reason, delete_message_seconds=0)
             elif action == "unban":
                 await guild.unban(discord.Object(id=user_id), reason=audit_reason)
-            else:
-                raise ValueError("Unbekannte Moderationsaktion.")
         except discord.Forbidden as exc:
+            discard_pending_case()
             raise ValueError(
                 "Dem Bot fehlen Rechte oder seine Rolle steht unter der Zielrolle."
             ) from exc
         except discord.HTTPException as exc:
+            discard_pending_case()
             raise ValueError("Discord konnte die Moderation nicht ausführen.") from exc
 
         with self.web_app.app_context():
-            case = ModerationCase(
-                guild_id=str(self.guild_id),
-                user_id=str(user_id),
-                user_name=getattr(member, "display_name", str(user_id)),
-                moderator_id=str(payload["moderator_id"]),
-                moderator_name=payload["moderator_name"],
-                action=action,
-                reason=reason,
-                duration_minutes=payload.get("duration_minutes"),
-            )
-            db.session.add(case)
-            db.session.flush()
+            case = db.session.get(ModerationCase, case_id)
+            if case is None:
+                raise RuntimeError("Der Moderationsfall wurde nicht gespeichert.")
+            case.status = "active"
             write_audit(
                 str(self.guild_id),
                 {
@@ -600,9 +710,7 @@ class BotService:
         except (KeyError, TypeError, ValueError) as exc:
             raise ValueError("Ungültiger Discord-Kanal.") from exc
         channel = self.guild.get_channel(channel_id)
-        if not isinstance(
-            channel, (discord.TextChannel, discord.Thread, discord.ForumChannel)
-        ):
+        if not isinstance(channel, (discord.TextChannel, discord.Thread)):
             raise ValueError("Der gewählte Textkanal wurde nicht gefunden.")
         embed = discord.Embed(
             title=payload.get("title") or None,
@@ -644,10 +752,10 @@ class BotService:
     async def publish_verify(self) -> dict[str, str]:
         with self.web_app.app_context():
             guild_config = db.session.scalar(
-                db.select(GuildConfig).where(
-                    GuildConfig.guild_id == str(self.guild_id)
-                )
+                db.select(GuildConfig).where(GuildConfig.guild_id == str(self.guild_id))
             )
+            if guild_config is None:
+                raise ValueError("Die Serverkonfiguration fehlt.")
             verify = dict(guild_config.verify or {})
         channel_id = verify.get("channel_id")
         channel = self.guild.get_channel(int(channel_id)) if channel_id else None
@@ -673,10 +781,10 @@ class BotService:
     async def verify_member(self, member: discord.Member) -> str:
         with self.web_app.app_context():
             guild_config = db.session.scalar(
-                db.select(GuildConfig).where(
-                    GuildConfig.guild_id == str(self.guild_id)
-                )
+                db.select(GuildConfig).where(GuildConfig.guild_id == str(self.guild_id))
             )
+            if guild_config is None:
+                raise ValueError("Die Serverkonfiguration fehlt.")
             verify = dict(guild_config.verify or {})
         if not verify.get("enabled"):
             raise ValueError("Die Verifizierung ist aktuell deaktiviert.")
@@ -717,10 +825,10 @@ class BotService:
     async def welcome_member(self, member: discord.Member) -> None:
         with self.web_app.app_context():
             guild_config = db.session.scalar(
-                db.select(GuildConfig).where(
-                    GuildConfig.guild_id == str(self.guild_id)
-                )
+                db.select(GuildConfig).where(GuildConfig.guild_id == str(self.guild_id))
             )
+            if guild_config is None:
+                return
             welcome = dict(guild_config.welcome or {})
         if not welcome.get("enabled"):
             return
@@ -760,9 +868,7 @@ class BotService:
                 embed = discord.Embed(
                     title=replace(welcome.get("title", "Willkommen!")),
                     description=message_text,
-                    color=discord.Color(
-                        int(welcome.get("color", "#8b5cf6")[1:], 16)
-                    ),
+                    color=discord.Color(int(welcome.get("color", "#8b5cf6")[1:], 16)),
                     timestamp=datetime.now(UTC),
                 )
                 embed.set_thumbnail(url=member.display_avatar.url)
@@ -789,11 +895,9 @@ class BotService:
             return False
         with self.web_app.app_context():
             guild_config = db.session.scalar(
-                db.select(GuildConfig).where(
-                    GuildConfig.guild_id == str(self.guild_id)
-                )
+                db.select(GuildConfig).where(GuildConfig.guild_id == str(self.guild_id))
             )
-            security = dict(guild_config.security or {})
+            security = dict(guild_config.security or {}) if guild_config else {}
             filters = db.session.scalars(
                 db.select(WordFilter).where(
                     WordFilter.guild_id == str(self.guild_id),
@@ -809,6 +913,7 @@ class BotService:
         violation_action: str | None = None
         response = ""
         timeout_minutes = 10
+        log_channel_id: str | None = None
         normalized = normalize_text(message.content)
         for item in filters:
             if str(message.channel.id) in (item.exempt_channel_ids or []):
@@ -816,7 +921,9 @@ class BotService:
             if author_roles & set(item.exempt_role_ids or []):
                 continue
             phrase = item.phrase if item.case_sensitive else item.phrase.lower()
-            content = message.content if item.case_sensitive else message.content.lower()
+            content = (
+                message.content if item.case_sensitive else message.content.lower()
+            )
             normalized_phrase = normalize_text(item.phrase)
             matches = (
                 content.strip() == phrase
@@ -824,23 +931,47 @@ class BotService:
                 else phrase in content or normalized_phrase in normalized
             )
             if matches:
-                violation_action = item.action
+                key = (message.author.id, item.id)
+                violations = self._filter_violations[key] + 1
+                self._filter_violations[key] = violations
+                threshold = max(1, item.threshold)
+                if violations >= threshold:
+                    violation_action = item.action
+                    self._filter_violations[key] = 0
+                else:
+                    violation_action = "delete"
                 response = item.response
+                if not response and violations < threshold:
+                    response = (
+                        f"Regelverstoß {violations}/{threshold}. "
+                        "Bitte beachte die Serverregeln."
+                    )
                 timeout_minutes = item.timeout_minutes
+                log_channel_id = item.log_channel_id
                 break
 
-        if not violation_action and security.get("anti_invites") and re.search(
-            r"(discord\.gg/|discord(?:app)?\.com/invite/)", message.content, re.I
+        if (
+            not violation_action
+            and security.get("anti_invites")
+            and re.search(
+                r"(discord\.gg/|discord(?:app)?\.com/invite/)",
+                message.content,
+                re.IGNORECASE,
+            )
         ):
             violation_action = "delete"
             response = "Discord-Einladungen sind hier nicht erlaubt."
-        if not violation_action and security.get("anti_links") and re.search(
-            r"https?://\S+", message.content, re.I
+        if (
+            not violation_action
+            and security.get("anti_links")
+            and re.search(r"https?://\S+", message.content, re.IGNORECASE)
         ):
             violation_action = "delete"
             response = "Links sind hier nicht erlaubt."
         if not violation_action and security.get("anti_caps"):
-            letters = [character for character in message.content if character.isalpha()]
+            letters = [
+                character for character in message.content if character.isalpha()
+            ]
             caps = sum(character.isupper() for character in letters)
             if len(letters) >= 10 and caps / len(letters) * 100 >= int(
                 security.get("caps_percentage", 75)
@@ -879,6 +1010,14 @@ class BotService:
                 )
             except discord.HTTPException:
                 pass
+        elif violation_action == "warn":
+            try:
+                await message.author.send(
+                    f"⚠️ Automod-Verwarnung auf **{message.guild.name}**: "
+                    f"{response or 'Bitte beachte die Serverregeln.'}"
+                )
+            except discord.HTTPException:
+                pass
         elif violation_action == "kick":
             try:
                 await message.author.kick(reason="Wortfilter von zyrahd.net")
@@ -891,6 +1030,25 @@ class BotService:
                 )
             except discord.HTTPException:
                 pass
+        if log_channel_id:
+            log_channel = message.guild.get_channel(int(log_channel_id))
+            if isinstance(log_channel, discord.TextChannel):
+                try:
+                    await log_channel.send(
+                        embed=discord.Embed(
+                            title="Automod-Ereignis",
+                            description=(
+                                f"**Mitglied:** {message.author.mention}\n"
+                                f"**Kanal:** {message.channel.mention}\n"
+                                f"**Aktion:** {violation_action}"
+                            ),
+                            color=discord.Color.orange(),
+                            timestamp=datetime.now(UTC),
+                        ),
+                        allowed_mentions=discord.AllowedMentions.none(),
+                    )
+                except discord.HTTPException:
+                    pass
         if response:
             try:
                 await message.channel.send(
@@ -902,9 +1060,7 @@ class BotService:
                 pass
         return True
 
-    async def publish_announcement(
-        self, payload: dict[str, Any]
-    ) -> dict[str, str]:
+    async def publish_announcement(self, payload: dict[str, Any]) -> dict[str, str]:
         channel = self.guild.get_channel(int(payload["channel_id"]))
         if not isinstance(channel, discord.TextChannel):
             raise ValueError("Der gewählte Ankündigungskanal wurde nicht gefunden.")
@@ -916,7 +1072,9 @@ class BotService:
         embed = discord.Embed(
             title=payload["title"],
             description=payload["content"],
-            color=priority_colors.get(payload.get("priority"), priority_colors["normal"]),
+            color=priority_colors.get(
+                payload.get("priority"), priority_colors["normal"]
+            ),
             timestamp=datetime.now(UTC),
         )
         embed.set_footer(text="Interne Team-Ankündigung")
@@ -960,7 +1118,11 @@ class BotService:
                     user_name=member.display_name,
                 )
             )
-            db.session.commit()
+            try:
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+                return False
             return True
 
 

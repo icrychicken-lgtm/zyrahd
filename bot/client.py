@@ -74,7 +74,9 @@ class ZyrahdBot(commands.Bot):
         self.tree.copy_global_to(guild=guild)
         synced = await self.tree.sync(guild=guild)
         logger.info(
-            "%d Slash-Commands mit Server %s synchronisiert.", len(synced), settings.guild_id
+            "%d Slash-Commands mit Server %s synchronisiert.",
+            len(synced),
+            settings.guild_id,
         )
         logger.info("%d Module erfolgreich geladen.", len(loaded))
 

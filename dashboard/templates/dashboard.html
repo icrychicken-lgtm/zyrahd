@@ -115,22 +115,26 @@
               <div class="field"><label>Embed-Farbe</label><div class="color-input"><input type="color" name="color_picker" value="#8b5cf6"><input name="color" value="#8b5cf6" maxlength="7"></div></div>
             </div>
             {{ ui.picker('support_role_ids', 'Zuständige Rollen', 'roles', '', true) }}
+            <div class="form-grid two">
+              {{ ui.picker('log_channel_id', 'Ticket-Log', 'channels', 'text,announcement') }}
+              {{ ui.picker('transcript_channel_id', 'Transcript-Kanal', 'channels', 'text,announcement') }}
+            </div>
             <div class="form-grid three">
               <div class="field"><label>Max. offen</label><input type="number" name="max_open_per_user" min="1" max="20" value="1"></div>
               <div class="field"><label>Cooldown (Min.)</label><input type="number" name="cooldown_minutes" min="0" max="10080" value="10"></div>
               <div class="field"><label>Inaktivität (Std.)</label><input type="number" name="inactivity_hours" min="0" max="8760" value="72"></div>
             </div>
+            <div class="form-grid two">
+              <div class="field"><label>Kanalformat</label><input name="channel_name_format" maxlength="80" value="ticket-{number}-{user}"><small class="field-hint">{number} und {user}</small></div>
+              <div class="field"><label>Priorität</label><select name="priority"><option value="low">Niedrig</option><option value="normal">Normal</option><option value="high">Hoch</option><option value="urgent">Dringend</option></select></div>
+            </div>
             <div class="field"><label>Begrüßungsnachricht</label><textarea name="greeting" rows="2" maxlength="2000"></textarea></div>
             <div class="field-head"><label>Formularfelder <small>maximal 5</small></label><button class="text-button" type="button" data-action="add-form-field">＋ Feld</button></div>
             <div class="form-fields" data-form-fields></div>
+            {{ ui.toggle('ping_roles', 'Support-Rollen erwähnen', 'Erwähnt zuständige Rollen beim Erstellen.') }}
             {{ ui.toggle('enabled', 'Ticket-Art aktiv', 'Wird im Discord- und Web-Menü angezeigt.') }}
             {{ ui.savebar('Ticket-Art speichern') }}
           </form>
-        </article>
-        {% else %}
-        <article class="panel">
-          <div class="panel-heading"><div><small>MEINE TICKETS</small><h3>Dein Support-Verlauf</h3></div></div>
-          <div class="ticket-table" data-ticket-list></div>
         </article>
         {% endif %}
       </section>
@@ -180,9 +184,11 @@
             <div class="field"><label>Button-Emoji</label><input name="button_emoji" maxlength="32"></div>
             <div class="field"><label>Konto-Mindestalter</label><input type="number" name="minimum_account_days" min="0" max="3650"><small class="field-hint">in Tagen</small></div>
           </div>
-          {{ ui.picker('log_channel_id', 'Log-Kanal', 'channels', 'text,announcement') }}
+          <div class="form-grid two">
+            {{ ui.picker('log_channel_id', 'Log-Kanal', 'channels', 'text,announcement') }}
+            <div class="field"><label>Embed-Farbe</label><div class="color-input"><input type="color" name="color_picker" value="#8b5cf6"><input name="color" value="#8b5cf6" maxlength="7"></div></div>
+          </div>
           {{ ui.toggle('dm_enabled', 'Erfolgsnachricht per DM') }}
-          <input type="hidden" name="color" value="#8b5cf6">
           {{ ui.savebar() }}
         </section>
         <aside class="info-card"><span>✓</span><h3>Persistent & zuverlässig</h3><p>Der Button funktioniert auch nach einem Neustart. Kontoalter und Rollen werden bei jedem Klick geprüft.</p></aside>
@@ -209,6 +215,9 @@
           <form class="sub-form" data-form="word-filter">
             <div class="field"><label>Wort oder Ausdruck</label><input name="phrase" maxlength="120" required></div>
             <div class="form-grid two"><div class="field"><label>Treffer</label><select name="match_type"><option value="contains">Enthält Ausdruck</option><option value="exact">Exaktes Wort</option></select></div><div class="field"><label>Aktion</label><select name="action"><option value="delete">Löschen</option><option value="warn">Verwarnen</option><option value="timeout">Timeout</option><option value="kick">Kick</option><option value="ban">Ban</option></select></div></div>
+            <div class="form-grid two"><div class="field"><label>Verstöße bis Strafe</label><input type="number" name="threshold" min="1" max="50" value="1"></div><div class="field"><label>Timeout-Dauer (Min.)</label><input type="number" name="timeout_minutes" min="1" max="40320" value="10"></div></div>
+            <div class="field"><label>Hinweis an das Mitglied</label><input name="response" maxlength="500" placeholder="Bitte beachte unsere Regeln."></div>
+            {{ ui.picker('log_channel_id', 'Filter-Log', 'channels', 'text,announcement') }}
             <button class="button button-secondary" type="submit">Filter hinzufügen</button>
           </form>
           <div class="filter-list" data-word-filter-list><div class="empty-state">Filter werden geladen …</div></div>
@@ -247,7 +256,7 @@
           <span class="preview-label">LIVE-VORSCHAU</span>
           <div class="discord-preview designer-preview">
             <div class="discord-channel"># ausgewählter-kanal</div>
-            <div class="discord-message"><div class="fake-avatar">Z</div><div><div class="discord-author">zyrahd.net <span>BOT</span><small>Heute um 20:42</small></div><p data-embed-preview="content"></p><div class="discord-embed" data-embed-card><b data-embed-preview="title">Dein Embed-Titel</b><p data-embed-preview="description">Die Vorschau aktualisiert sich während du schreibst.</p><img data-embed-preview-image alt=""><small class="embed-footer" data-embed-preview="footer">zyrahd.net</small></div></div></div>
+            <div class="discord-message"><div class="fake-avatar">Z</div><div><div class="discord-author">zyrahd.net <span>BOT</span><small>Heute um 20:42</small></div><p data-embed-preview="content"></p><div class="discord-embed" data-embed-card><img class="embed-thumbnail" data-embed-preview-thumbnail alt=""><b data-embed-preview="title">Dein Embed-Titel</b><p data-embed-preview="description">Die Vorschau aktualisiert sich während du schreibst.</p><img data-embed-preview-image alt=""><small class="embed-footer" data-embed-preview="footer">zyrahd.net</small></div></div></div>
           </div>
         </aside>
       </form>

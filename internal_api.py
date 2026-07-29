@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+from collections.abc import Awaitable
 from concurrent.futures import TimeoutError as FutureTimeout
-from typing import Any, Awaitable
+from typing import Any
 
 from flask import Flask, jsonify, request
 
@@ -37,7 +38,7 @@ def create_internal_app(bot) -> Flask:
             raise RuntimeError("Der Discord-Bot startet noch.")
         future = asyncio.run_coroutine_threadsafe(awaitable, bot.event_loop)
         try:
-            return future.result(timeout=25)
+            return future.result(timeout=28)
         except FutureTimeout as exc:
             future.cancel()
             raise RuntimeError("Discord hat nicht rechtzeitig geantwortet.") from exc
@@ -51,7 +52,7 @@ def create_internal_app(bot) -> Flask:
 
     @app.get("/internal/resources")
     def resources():
-        return jsonify(schedule(call(bot.service.resources)))
+        return jsonify(schedule(bot.service.resources()))
 
     @app.post("/internal/reload")
     def reload_settings():

@@ -53,7 +53,7 @@ class Settings:
     database_url: str
 
     @classmethod
-    def from_env(cls) -> "Settings":
+    def from_env(cls) -> Settings:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         default_database = f"sqlite:///{(DATA_DIR / 'bot.db').as_posix()}"
         return cls(

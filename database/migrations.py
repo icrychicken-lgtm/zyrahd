@@ -18,8 +18,7 @@ CURRENT_VERSION = 1
 
 def run_migrations() -> None:
     applied = {
-        value
-        for value in db.session.scalars(db.select(SchemaVersion.version)).all()
+        value for value in db.session.scalars(db.select(SchemaVersion.version)).all()
     }
     if 1 not in applied:
         db.session.add(SchemaVersion(version=1))
