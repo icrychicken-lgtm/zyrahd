@@ -12,9 +12,10 @@ data/*
 !data/.gitkeep
 data/*.db
 data/*.db-*
-uploads/**
+uploads/*
 !uploads/.gitkeep
 !uploads/tickets/
+uploads/tickets/*
 !uploads/tickets/.gitkeep
 *.log
 .DS_Store
