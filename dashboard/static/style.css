@@ -488,6 +488,7 @@ button { color: inherit; }
 .designer-layout { grid-template-columns: minmax(0, 1fr) minmax(340px, .8fr); }
 .settings-form { overflow: visible; }
 .settings-form.narrow { max-width: 900px; }
+.ticket-panel-form { margin-bottom: 14px; }
 .form-grid { padding: 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .form-grid.thirds { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; color: #aaa3b3; font-size: 10px; font-weight: 620; }
@@ -593,6 +594,22 @@ td strong { color: #ddd7e7; }
 .permission-grid { padding: 6px 20px 20px; display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 7px; }
 .permission-option { padding: 8px 9px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.018); color: #9891a3; font-size: 9px; cursor: pointer; }
 .permission-option input { accent-color: var(--purple); }
+.field-builder { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: rgba(5,4,9,.22); }
+.field-builder-head { margin-bottom: 9px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.field-builder-head span { display: block; color: #aaa3b3; font-size: 10px; font-weight: 650; }
+.field-builder-head small { display: block; color: #655f70; font-size: 8px; }
+.ticket-field-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 1.1fr) 105px minmax(120px, 1fr) 67px 58px 64px 30px;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 0;
+  border-top: 1px solid rgba(255,255,255,.04);
+}
+.ticket-field-row .input { min-height: 34px; padding: 6px 8px; font-size: 9px; }
+.ticket-field-check { display: flex; align-items: center; gap: 4px; color: #898290; font-size: 8px; white-space: nowrap; }
+.ticket-field-check input { accent-color: var(--purple); }
+.compact-number { text-align: center; }
 
 /* Dialogs */
 .modal {
@@ -701,6 +718,8 @@ td strong { color: #ddd7e7; }
   .dashboard-grid { grid-template-columns: 1fr; }
   .split-modal { grid-template-columns: 1fr; }
   .split-modal > .list-cards { max-height: 220px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .ticket-field-row { grid-template-columns: 1fr 100px; }
+  .ticket-field-row .input:nth-child(3) { grid-column: 1 / -1; }
 }
 @media (max-width: 580px) {
   .landing-nav, .landing, .landing-footer { width: min(100% - 28px, 1180px); }

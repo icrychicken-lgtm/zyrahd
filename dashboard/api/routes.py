@@ -276,6 +276,22 @@ def module_settings(module: str):
         data["remove_role_ids"] = [
             _valid_role(item, roles) for item in data.get("remove_role_ids", [])
         ][:20]
+    if module == "ticket_panel" and data.get("publish_channel"):
+        data["publish_channel"] = _valid_channel(
+            data["publish_channel"], channels, {"text", "announcement"}
+        )
+    if module in {"welcome", "verify", "ticket_panel"}:
+        color = str(data.get("color", "#7c5cff"))
+        if len(color) != 7 or not color.startswith("#"):
+            raise ValueError("Die Embed-Farbe ist ungültig.")
+        try:
+            int(color[1:], 16)
+        except ValueError as exc:
+            raise ValueError("Die Embed-Farbe ist ungültig.") from exc
+        data["color"] = color
+        data["title"] = str(data.get("title", ""))[:256]
+        if "description" in data:
+            data["description"] = str(data["description"])[:4000]
     if module == "security":
         data["ignored_channels"] = [
             _valid_channel(
@@ -421,6 +437,10 @@ def _apply_ticket_type(row: TicketType, data: dict[str, Any]) -> None:
                 ),
             }
         )
+        if clean_fields[-1]["min_length"] > clean_fields[-1]["max_length"]:
+            raise ValueError(
+                f"Bei „{label}“ darf die Mindestlänge nicht größer als die Maximallänge sein."
+            )
     row.form_fields = clean_fields
 
 
@@ -840,8 +860,13 @@ def announcements():
 
 
 @bp.post("/panels/<panel>/publish")
-@require_permission("server.edit")
+@require_login
 def publish_panel(panel: str):
+    required = "tickets.edit" if panel == "ticket" else "server.edit"
+    if panel not in {"ticket", "verify"}:
+        return jsonify(error="Unbekannter Panel-Typ."), 404
+    if not has_permission(required):
+        return jsonify(error="Dafür fehlt dir die Dashboard-Berechtigung."), 403
     data = _body()
     _, channels = _resource_maps()
     channel_id = _valid_channel(

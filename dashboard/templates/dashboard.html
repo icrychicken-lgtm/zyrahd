@@ -127,6 +127,18 @@
           <div><span class="eyebrow small">SUPPORT</span><h1>Ticket-Zentrale</h1><p>Alle Anfragen, Status und Zuständigkeiten in einer Ansicht.</p></div>
           {% if "tickets.edit" in permissions %}<button class="button ghost" data-open-dialog="ticket-type-dialog">Ticket-Arten verwalten</button>{% endif %}
         </div>
+        {% if "tickets.edit" in permissions %}
+        <form class="panel settings-form ticket-panel-form" id="ticket-panel-form" data-settings-module="ticket_panel">
+          <div class="panel-head"><div><span class="panel-kicker">DISCORD-EINSTIEG</span><h2>Ticket-Panel veröffentlichen</h2><p>Gestalte den Einstieg und sende ihn direkt in den gewünschten Kanal.</p></div></div>
+          <div class="form-grid thirds">
+            <label class="field"><span>Titel</span><input class="input" name="title" maxlength="256" value="Support-Center"></label>
+            <label class="field"><span>Akzentfarbe</span><input class="input color-input" type="color" name="color" value="#7c5cff"></label>
+            <label class="field"><span>Zielkanal</span><div class="resource-select" data-name="publish_channel" data-types="text,announcement"><button type="button">Kanal auswählen …</button></div></label>
+            <label class="field full"><span>Beschreibung</span><textarea class="input" name="description" rows="3" maxlength="4000">Benötigst du Hilfe? Klicke auf „Ticket erstellen“ und wähle den passenden Bereich.</textarea></label>
+          </div>
+          <div class="form-actions"><button class="button ghost" type="button" data-publish-panel="ticket">Panel in Discord veröffentlichen</button><button class="button" type="submit">Gestaltung speichern</button></div>
+        </form>
+        {% endif %}
         <div class="panel">
           <div class="table-tools"><input class="input" id="ticket-search" placeholder="Tickets durchsuchen …"><select class="input" id="team-ticket-status"><option value="">Alle Status</option><option value="open">Offen</option><option value="claimed">Übernommen</option><option value="waiting">Wartend</option><option value="closed">Geschlossen</option></select></div>
           <div class="table-wrap"><table><thead><tr><th>Ticket</th><th>Ersteller</th><th>Bereich</th><th>Priorität</th><th>Status</th><th>Aktualisiert</th></tr></thead><tbody id="team-ticket-list"></tbody></table></div>
@@ -319,6 +331,10 @@
         <label class="field full"><span>Kategorie</span><div class="resource-select" data-name="category_id" data-types="category"><button type="button">Kategorie auswählen …</button></div></label>
         <label class="field full"><span>Support-Rollen</span><div class="resource-select" data-name="support_role_ids" data-types="role" data-multiple="true"><button type="button">Rollen auswählen …</button></div></label>
         <label class="field full"><span>Begrüßung im Ticket</span><textarea class="input" name="welcome_message" rows="3"></textarea></label>
+        <div class="field-builder full">
+          <div class="field-builder-head"><div><span>Formularfelder</span><small>Discord zeigt maximal fünf Felder; im Web sind bis zu 20 möglich.</small></div><button class="mini-button" id="add-ticket-field" type="button">＋ Feld</button></div>
+          <div id="ticket-field-list"></div>
+        </div>
         <label class="field check-field"><input type="checkbox" name="enabled" checked><span>Aktiviert</span></label>
         <label class="field check-field"><input type="checkbox" name="ping_roles" checked><span>Support-Rollen erwähnen</span></label>
         <div class="form-actions full"><button class="button ghost" type="reset">Neu</button><button class="button" type="submit">Speichern</button></div>

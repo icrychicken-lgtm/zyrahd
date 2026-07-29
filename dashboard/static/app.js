@@ -58,6 +58,10 @@ function initDashboard() {
     audit: [],
     currentTicket: null,
     editingType: null,
+    editingFields: [{
+      id: "request", label: "Beschreibe deine Anfrage", type: "long",
+      required: true, placeholder: "Worum geht es?", min_length: 10, max_length: 1000,
+    }],
   };
 
   class ResourceSelect {
@@ -277,7 +281,8 @@ function initDashboard() {
       if (name === "overview") await loadOverview();
       if (name === "my-tickets") await Promise.all([loadTicketTypes(), loadMyTickets()]);
       if (name === "tickets") await Promise.all([loadTickets(), loadTicketTypes()]);
-      if (["welcome", "verify", "security", "designer", "team", "permissions"].includes(name)) await loadResources();
+      if (["tickets", "welcome", "verify", "security", "designer", "team", "permissions"].includes(name)) await loadResources();
+      if (name === "tickets" && permissions.has("tickets.edit")) await loadSettings("ticket_panel");
       if (name === "welcome" || name === "verify" || name === "security") await loadSettings(name);
       if (name === "security") await loadWordFilters();
       if (name === "moderation") await loadCases();
@@ -500,7 +505,9 @@ function initDashboard() {
     target.querySelectorAll("[data-edit-type]").forEach((button) => button.addEventListener("click", () => {
       const item = state.ticketTypes.find((entry) => entry.id === Number(button.dataset.editType));
       state.editingType = item;
+      state.editingFields = structuredClone(item.form_fields || []);
       fillForm(document.getElementById("ticket-type-form"), item);
+      renderTicketFields();
     }));
     target.querySelectorAll("[data-delete-type]").forEach((button) => button.addEventListener("click", async () => {
       if (!confirm("Diese Ticket-Art löschen? Bereits verwendete Arten werden sicher deaktiviert.")) return;
@@ -516,17 +523,65 @@ function initDashboard() {
   document.getElementById("ticket-type-form")?.addEventListener("reset", () => {
     window.setTimeout(() => {
       state.editingType = null;
+      state.editingFields = [{
+        id: "request", label: "Beschreibe deine Anfrage", type: "long",
+        required: true, placeholder: "Worum geht es?", min_length: 10, max_length: 1000,
+      }];
+      renderTicketFields();
       state.selectors.filter((item) => document.getElementById("ticket-type-form").contains(item.root)).forEach((item) => item.set([]));
     });
   });
+
+  function renderTicketFields() {
+    const target = document.getElementById("ticket-field-list");
+    if (!target) return;
+    target.innerHTML = state.editingFields.length ? state.editingFields.map((field, index) =>
+      `<div class="ticket-field-row" data-field-index="${index}">
+        <input class="input" data-key="label" maxlength="80" value="${escapeHtml(field.label || "")}" placeholder="Bezeichnung">
+        <select class="input" data-key="type"><option value="short" ${field.type !== "long" ? "selected" : ""}>Kurzer Text</option><option value="long" ${field.type === "long" ? "selected" : ""}>Langer Text</option></select>
+        <input class="input" data-key="placeholder" maxlength="100" value="${escapeHtml(field.placeholder || "")}" placeholder="Platzhalter">
+        <label class="ticket-field-check"><input type="checkbox" data-key="required" ${field.required ? "checked" : ""}> Pflicht</label>
+        <input class="input compact-number" data-key="min_length" type="number" min="0" max="4000" value="${Number(field.min_length || 0)}" title="Mindestlänge">
+        <input class="input compact-number" data-key="max_length" type="number" min="1" max="4000" value="${Number(field.max_length || 1000)}" title="Maximallänge">
+        <button class="mini-button delete" type="button" data-remove-field="${index}" aria-label="Feld entfernen">×</button>
+      </div>`
+    ).join("") : '<div class="resource-empty">Noch keine Formularfelder. Ohne Felder wird eine allgemeine Beschreibung abgefragt.</div>';
+    target.querySelectorAll(".ticket-field-row").forEach((row) => {
+      row.querySelectorAll("[data-key]").forEach((input) => input.addEventListener("input", () => {
+        const index = Number(row.dataset.fieldIndex);
+        const key = input.dataset.key;
+        state.editingFields[index][key] = input.type === "checkbox"
+          ? input.checked
+          : (input.type === "number" ? Number(input.value) : input.value);
+        if (key === "label" && input.value.trim()) {
+          state.editingFields[index].id = input.value.trim().toLocaleLowerCase("de")
+            .normalize("NFKD").replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40) || `field_${index + 1}`;
+        }
+      }));
+    });
+    target.querySelectorAll("[data-remove-field]").forEach((button) => button.addEventListener("click", () => {
+      state.editingFields.splice(Number(button.dataset.removeField), 1);
+      renderTicketFields();
+    }));
+  }
+
+  document.getElementById("add-ticket-field")?.addEventListener("click", () => {
+    if (state.editingFields.length >= 20) return toast("Maximal 20 Formularfelder sind möglich.", "error");
+    const number = state.editingFields.length + 1;
+    state.editingFields.push({
+      id: `field_${number}`, label: `Neue Frage ${number}`, type: "short",
+      required: false, placeholder: "", min_length: 0, max_length: 1000,
+    });
+    renderTicketFields();
+  });
+  renderTicketFields();
+
   document.getElementById("ticket-type-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
     const payload = { ...(state.editingType || {}), ...gatherForm(form) };
-    payload.form_fields = state.editingType?.form_fields?.length ? state.editingType.form_fields : [{
-      id: "request", label: "Beschreibe deine Anfrage", type: "long", required: true,
-      placeholder: "Worum geht es?", min_length: 10, max_length: 1000,
-    }];
+    payload.form_fields = state.editingFields;
     const id = Number(form.elements.id.value || 0);
     try {
       await api(id ? `/api/ticket-types/${id}` : "/api/ticket-types", { method: id ? "PUT" : "POST", body: payload });
@@ -583,6 +638,12 @@ function initDashboard() {
     const channelId = selector(form, "publish_channel")?.value();
     if (!channelId) return toast("Bitte wähle zuerst einen Panel-Kanal.", "error");
     try {
+      if (form.dataset.settingsModule) {
+        const saved = await api(`/api/settings/${form.dataset.settingsModule}`, {
+          method: "PUT", body: gatherForm(form),
+        });
+        fillForm(form, saved.settings);
+      }
       await api(`/api/panels/${button.dataset.publishPanel}/publish`, { method: "POST", body: { channel_id: channelId } });
       toast("Panel wurde in Discord veröffentlicht.");
     } catch (error) { toast(error.message, "error"); }
