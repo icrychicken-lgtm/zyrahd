@@ -92,6 +92,26 @@ def test_dashboard_requires_login(client):
     assert "/login" in response.headers["Location"]
 
 
+def test_all_dashboard_sections_render_for_admin(client):
+    login(client)
+    sections = (
+        "overview",
+        "tickets",
+        "welcome",
+        "verify",
+        "security",
+        "moderation",
+        "designer",
+        "announcements",
+        "permissions",
+        "audit",
+    )
+    for section in sections:
+        response = client.get(f"/dashboard/{section}")
+        assert response.status_code == 200, section
+        assert b"zyrahd.net" in response.data
+
+
 def test_default_ticket_types_are_seeded(client):
     login(client)
     response = client.get("/api/ticket-types")
