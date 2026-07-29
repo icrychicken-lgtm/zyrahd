@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Fehler · zyrahd.net{% endblock %}
+{% block body_class %}error-body{% endblock %}
+{% block body %}
+<main class="error-page"><span>500</span><h1>Das hätte nicht passieren sollen.</h1><p>Der Fehler wurde protokolliert. Bitte versuche es gleich erneut.</p><a class="button button-primary" href="{{ url_for('pages.index') }}">Zur Startseite</a></main>
+{% endblock %}

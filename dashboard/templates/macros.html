@@ -1,0 +1,45 @@
+{% macro picker(name, label, resource='channels', filters='', multiple=false, hint='Auswählen …') %}
+<div class="field">
+  <label>{{ label }}</label>
+  <div class="resource-picker"
+       data-resource="{{ resource }}"
+       data-filters="{{ filters }}"
+       data-multiple="{{ 'true' if multiple else 'false' }}"
+       data-name="{{ name }}">
+    <button class="picker-trigger" type="button" aria-expanded="false">
+      <span class="picker-value">{{ hint }}</span>
+      <span class="chevron">⌄</span>
+    </button>
+    <div class="picker-menu">
+      <div class="picker-search-wrap">
+        <span>⌕</span>
+        <input class="picker-search" type="search" placeholder="{{ 'Rolle' if resource == 'roles' else 'Kanal' }} suchen …" autocomplete="off">
+      </div>
+      <div class="picker-options" role="listbox"></div>
+      <div class="picker-empty">Kein passender Eintrag gefunden.</div>
+    </div>
+    <div class="picker-tags"></div>
+    <input type="hidden" name="{{ name }}">
+  </div>
+</div>
+{% endmacro %}
+
+{% macro toggle(name, label, description='') %}
+<label class="toggle-row">
+  <span>
+    <strong>{{ label }}</strong>
+    {% if description %}<small>{{ description }}</small>{% endif %}
+  </span>
+  <input type="checkbox" name="{{ name }}">
+  <span class="toggle-track"><span></span></span>
+</label>
+{% endmacro %}
+
+{% macro savebar(text='Änderungen speichern', extra='') %}
+<div class="form-actions">
+  {% if extra %}{{ extra|safe }}{% endif %}
+  <button class="button button-primary" type="submit">
+    <span class="button-icon">✓</span>{{ text }}
+  </button>
+</div>
+{% endmacro %}

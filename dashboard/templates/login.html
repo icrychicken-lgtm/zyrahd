@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}zyrahd.net · Discord neu gedacht{% endblock %}
+{% block body_class %}landing-body{% endblock %}
+{% block body %}
+<main class="landing-shell">
+  <nav class="landing-nav">
+    <a class="brand" href="{{ url_for('pages.index') }}">
+      <span class="brand-mark">Z</span>
+      <span>zyrahd<em>.net</em></span>
+    </a>
+    <span class="status-pill"><i></i> Dashboard bereit</span>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="eyebrow"><span>✦</span> Dein Server. Eine Kommandozentrale.</div>
+      <h1>Discord-Verwaltung,<br><span>die sich gut anfühlt.</span></h1>
+      <p>Tickets, Sicherheit, Moderation und dein Team – leistungsstark gebündelt in einem ruhigen, modernen Dashboard.</p>
+      <a class="discord-login" href="{{ url_for('auth.login') }}">
+        <span class="discord-logo">◖◗</span>
+        Mit Discord anmelden
+        <span class="arrow">→</span>
+      </a>
+      <div class="trust-row">
+        <span>✓ Sicherer OAuth2-Login</span>
+        <span>✓ Rollenbasierter Zugriff</span>
+      </div>
+    </div>
+
+    <div class="hero-visual" aria-hidden="true">
+      <div class="dashboard-preview">
+        <div class="preview-sidebar">
+          <span class="mini-logo">Z</span>
+          <i class="active"></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="preview-main">
+          <div class="preview-top"><b>Guten Abend, Admin</b><span></span></div>
+          <div class="preview-stats">
+            <article><i class="purple"></i><strong>8.429</strong><small>Mitglieder</small></article>
+            <article><i class="blue"></i><strong>24</strong><small>Offene Tickets</small></article>
+            <article><i class="green"></i><strong>99,9%</strong><small>Bot Uptime</small></article>
+          </div>
+          <div class="preview-grid">
+            <div class="preview-chart">
+              <div class="chart-label"><b>Server-Aktivität</b><span>7 Tage</span></div>
+              <svg viewBox="0 0 420 150" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#9d6cff" stop-opacity=".42"/>
+                    <stop offset="100%" stop-color="#9d6cff" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path class="chart-fill" d="M0,130 C55,122 65,75 115,90 C170,108 190,30 245,56 C290,78 320,28 365,38 C392,44 407,16 420,20 L420,150 L0,150Z"/>
+                <path class="chart-line" d="M0,130 C55,122 65,75 115,90 C170,108 190,30 245,56 C290,78 320,28 365,38 C392,44 407,16 420,20"/>
+              </svg>
+            </div>
+            <div class="preview-feed">
+              <b>Live-Aktivität</b>
+              <p><i></i><span>Ticket übernommen<small>gerade eben</small></span></p>
+              <p><i></i><span>Mitglied verifiziert<small>vor 2 Min.</small></span></p>
+              <p><i></i><span>Regel aktualisiert<small>vor 8 Min.</small></span></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="floating-card float-security"><span>◈</span><div><b>Automod aktiv</b><small>Server ist geschützt</small></div></div>
+      <div class="floating-card float-ticket"><span>✓</span><div><b>Ticket gelöst</b><small>Antwortzeit 2:14 Min.</small></div></div>
+    </div>
+  </section>
+
+  <section class="feature-strip">
+    <article><span>01</span><div><b>Ticket-Center</b><small>Support ohne Chaos</small></div></article>
+    <article><span>02</span><div><b>Smart Security</b><small>Automod mit Kontrolle</small></div></article>
+    <article><span>03</span><div><b>Team Workspace</b><small>Gemeinsam schneller</small></div></article>
+    <article><span>04</span><div><b>Live Insights</b><small>Zahlen, die helfen</small></div></article>
+  </section>
+</main>
+{% endblock %}

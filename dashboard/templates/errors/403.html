@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Kein Zugriff · zyrahd.net{% endblock %}
+{% block body_class %}error-body{% endblock %}
+{% block body %}
+<main class="error-page"><span>403</span><h1>Dieser Bereich ist geschützt.</h1><p>Deine Discord-Rollen geben dir hier keinen Zugriff.</p><a class="button button-primary" href="{{ url_for('pages.dashboard') }}">Zur Übersicht</a></main>
+{% endblock %}

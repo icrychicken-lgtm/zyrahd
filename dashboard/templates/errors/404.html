@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Nicht gefunden · zyrahd.net{% endblock %}
+{% block body_class %}error-body{% endblock %}
+{% block body %}
+<main class="error-page"><span>404</span><h1>Hier ist nichts.</h1><p>Die angeforderte Seite wurde nicht gefunden.</p><a class="button button-primary" href="{{ url_for('pages.index') }}">Zurück zum Dashboard</a></main>
+{% endblock %}

@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+{% import "macros.html" as ui %}
+{% block title %}{{ sections.get(active_section, 'Dashboard') }} · zyrahd.net{% endblock %}
+{% block body_class %}dashboard-body{% endblock %}
+{% block body %}
+<div class="dashboard-shell" data-section="{{ active_section }}">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand sidebar-brand" href="{{ url_for('pages.dashboard') }}">
+      <span class="brand-mark">Z</span>
+      <span>zyrahd<em>.net</em></span>
+    </a>
+    <div class="server-card">
+      <div class="server-icon" data-server-icon>Z</div>
+      <div><strong data-server-name>Discord Server</strong><small><i></i><span data-bot-state>Verbinden …</span></small></div>
+      <span class="chevron">⌄</span>
+    </div>
+    <nav class="side-nav">
+      <span class="nav-label">Kommandozentrale</span>
+      {% set icons = {
+        'overview': '⌂', 'tickets': '◫', 'welcome': '✦', 'verify': '✓',
+        'security': '◇', 'moderation': '⚑', 'designer': '◈',
+        'announcements': '◖', 'permissions': '◎', 'audit': '≡'
+      } %}
+      {% for slug, label in sections.items() %}
+        <a href="{{ url_for('pages.dashboard_section', section=slug) }}"
+           class="{{ 'active' if active_section == slug else '' }}">
+          <span class="nav-icon">{{ icons.get(slug, '•') }}</span>
+          <span>{{ label }}</span>
+          {% if slug == 'tickets' %}<b class="nav-badge" data-open-ticket-badge>0</b>{% endif %}
+        </a>
+      {% endfor %}
+    </nav>
+    <div class="sidebar-foot">
+      <div class="user-card">
+        <img src="{{ user.avatar_url }}" alt="">
+        <div><strong>{{ user.global_name or user.username }}</strong><small>Dashboard-Nutzer</small></div>
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" title="Abmelden">↗</button>
+        </form>
+      </div>
+    </div>
+  </aside>
+
+  <div class="dashboard-content">
+    <header class="topbar">
+      <button class="mobile-menu" type="button" data-action="toggle-sidebar">☰</button>
+      <div>
+        <div class="breadcrumbs"><span>zyrahd.net</span><i>/</i>{{ sections.get(active_section, 'Dashboard') }}</div>
+        <h1>{{ sections.get(active_section, 'Dashboard') }}</h1>
+      </div>
+      <div class="top-actions">
+        <span class="connection-pill"><i></i><span data-connection>Bot wird geprüft</span></span>
+        <button class="icon-button" type="button" data-action="refresh" title="Daten aktualisieren">↻</button>
+        <img class="top-avatar" src="{{ user.avatar_url }}" alt="{{ user.username }}">
+      </div>
+    </header>
+
+    <main class="page-content">
+      {% if active_section == 'overview' %}
+      <section class="page-heading reveal">
+        <div><span class="eyebrow">LIVE DASHBOARD</span><h2>Guten Abend, {{ user.global_name or user.username }} <span>✦</span></h2><p>Hier ist der aktuelle Stand deines Discord-Servers.</p></div>
+        <span class="last-update">Zuletzt aktualisiert: <b data-last-update>jetzt</b></span>
+      </section>
+      <section class="stat-grid reveal delay-1">
+        <article class="stat-card"><span class="stat-icon purple">♙</span><div><small>Mitglieder</small><strong data-stat="members">–</strong><em>Gesamt auf dem Server</em></div></article>
+        <article class="stat-card"><span class="stat-icon green">●</span><div><small>Gerade online</small><strong data-stat="online_members">–</strong><em>Live von Discord</em></div></article>
+        <article class="stat-card"><span class="stat-icon blue">◫</span><div><small>Offene Tickets</small><strong data-stat="open_tickets">–</strong><em><b data-stat="tickets_today">–</b> heute erstellt</em></div></article>
+        <article class="stat-card"><span class="stat-icon orange">⚑</span><div><small>Moderationen heute</small><strong data-stat="moderations_today">–</strong><em>Dokumentierte Fälle</em></div></article>
+      </section>
+      <section class="overview-grid reveal delay-2">
+        <article class="panel chart-panel">
+          <div class="panel-heading"><div><small>AKTIVITÄT</small><h3>Tickets der letzten 7 Tage</h3></div><span class="mini-select">7 Tage</span></div>
+          <div class="chart-wrap" data-chart><div class="chart-loading"></div></div>
+        </article>
+        <article class="panel activity-panel">
+          <div class="panel-heading"><div><small>LIVE</small><h3>Letzte Aktivitäten</h3></div><a href="{{ url_for('pages.dashboard_section', section='audit') if 'audit' in sections else '#' }}">Alle ansehen</a></div>
+          <div class="activity-list" data-activity-list><div class="empty-state small">Aktivitäten werden geladen …</div></div>
+        </article>
+      </section>
+
+      {% elif active_section == 'tickets' %}
+      <section class="page-heading reveal">
+        <div><span class="eyebrow">SUPPORT WORKSPACE</span><h2>Tickets im Griff behalten</h2><p>Ticket-Arten, Formulare und Support-Verlauf an einem Ort.</p></div>
+        {% if 'tickets.manage' in permissions or 'admin.all' in permissions %}
+        <button class="button button-primary" type="button" data-action="new-ticket-type">＋ Neue Ticket-Art</button>
+        {% endif %}
+      </section>
+      {% if 'tickets.manage' in permissions or 'admin.all' in permissions %}
+      <section class="panel compact-panel reveal delay-1">
+        <div class="panel-heading"><div><small>TICKET-PANEL</small><h3>Support-Center veröffentlichen</h3></div></div>
+        <form class="inline-form" data-form="ticket-panel">
+          {{ ui.picker('channel_id', 'Panel-Kanal', 'channels', 'text,announcement') }}
+          <button class="button button-secondary" type="submit">Panel veröffentlichen →</button>
+        </form>
+      </section>
+      {% endif %}
+      <section class="ticket-layout reveal delay-2">
+        <article class="panel">
+          <div class="panel-heading"><div><small>KONFIGURATION</small><h3>Ticket-Arten</h3></div><span class="count-pill" data-ticket-type-count>0</span></div>
+          <div class="type-list" data-ticket-type-list><div class="empty-state">Ticket-Arten werden geladen …</div></div>
+        </article>
+        {% if 'tickets.manage' in permissions or 'admin.all' in permissions %}
+        <article class="panel editor-panel" data-ticket-editor>
+          <div class="panel-heading"><div><small>EDITOR</small><h3 data-editor-title>Ticket-Art bearbeiten</h3></div><button class="icon-button danger" type="button" data-action="delete-ticket-type" title="Löschen">×</button></div>
+          <form data-form="ticket-type">
+            <input type="hidden" name="id">
+            <div class="form-grid two">
+              <div class="field"><label>Name</label><input name="name" maxlength="80" required placeholder="z. B. Support"></div>
+              <div class="field"><label>Emoji</label><input name="emoji" maxlength="32" placeholder="🎫"></div>
+            </div>
+            <div class="field"><label>Beschreibung</label><textarea name="description" maxlength="200" rows="2" placeholder="Wofür ist diese Ticket-Art?"></textarea></div>
+            <div class="form-grid two">
+              {{ ui.picker('category_id', 'Ticket-Kategorie', 'channels', 'category') }}
+              <div class="field"><label>Embed-Farbe</label><div class="color-input"><input type="color" name="color_picker" value="#8b5cf6"><input name="color" value="#8b5cf6" maxlength="7"></div></div>
+            </div>
+            {{ ui.picker('support_role_ids', 'Zuständige Rollen', 'roles', '', true) }}
+            <div class="form-grid three">
+              <div class="field"><label>Max. offen</label><input type="number" name="max_open_per_user" min="1" max="20" value="1"></div>
+              <div class="field"><label>Cooldown (Min.)</label><input type="number" name="cooldown_minutes" min="0" max="10080" value="10"></div>
+              <div class="field"><label>Inaktivität (Std.)</label><input type="number" name="inactivity_hours" min="0" max="8760" value="72"></div>
+            </div>
+            <div class="field"><label>Begrüßungsnachricht</label><textarea name="greeting" rows="2" maxlength="2000"></textarea></div>
+            <div class="field-head"><label>Formularfelder <small>maximal 5</small></label><button class="text-button" type="button" data-action="add-form-field">＋ Feld</button></div>
+            <div class="form-fields" data-form-fields></div>
+            {{ ui.toggle('enabled', 'Ticket-Art aktiv', 'Wird im Discord- und Web-Menü angezeigt.') }}
+            {{ ui.savebar('Ticket-Art speichern') }}
+          </form>
+        </article>
+        {% else %}
+        <article class="panel">
+          <div class="panel-heading"><div><small>MEINE TICKETS</small><h3>Dein Support-Verlauf</h3></div></div>
+          <div class="ticket-table" data-ticket-list></div>
+        </article>
+        {% endif %}
+      </section>
+      <section class="panel reveal delay-3">
+        <div class="panel-heading"><div><small>AKTUELLE VORGÄNGE</small><h3>{{ 'Alle Tickets' if 'tickets.manage' in permissions or 'admin.all' in permissions else 'Meine Tickets' }}</h3></div><button class="button button-ghost" type="button" data-action="create-web-ticket">🎫 Neues Ticket erstellen</button></div>
+        <div class="ticket-table" data-ticket-list><div class="empty-state">Tickets werden geladen …</div></div>
+      </section>
+
+      {% elif active_section == 'welcome' %}
+      <section class="page-heading reveal"><div><span class="eyebrow">FIRST IMPRESSION</span><h2>Ein Empfang, der bleibt</h2><p>Begrüße neue Mitglieder automatisch und persönlich.</p></div></section>
+      <form class="settings-layout reveal delay-1" data-form="settings" data-area="welcome">
+        <section class="panel">
+          <div class="panel-heading"><div><small>WILLKOMMEN</small><h3>Nachricht & Ziel</h3></div><span class="status-chip">Live-Vorschau</span></div>
+          {{ ui.toggle('enabled', 'Willkommenssystem aktiv', 'Sendet bei jedem Beitritt eine Nachricht.') }}
+          {{ ui.picker('channel_id', 'Willkommenskanal', 'channels', 'text,announcement') }}
+          <div class="field"><label>Titel</label><input name="title" maxlength="256" placeholder="Willkommen bei {server}"></div>
+          <div class="field"><label>Nachricht</label><textarea name="message" rows="7" maxlength="4000" placeholder="Willkommen {mention} auf {server}!"></textarea><small class="field-hint">{mention}, {username}, {server}, {member_count}, {created_at}</small></div>
+          <div class="form-grid two">
+            <div class="field"><label>Farbe</label><div class="color-input"><input type="color" name="color_picker" value="#8b5cf6"><input name="color" value="#8b5cf6"></div></div>
+            <div class="toggle-group">{{ ui.toggle('embed', 'Als Embed senden') }}{{ ui.toggle('dm_enabled', 'Zusätzlich per DM') }}</div>
+          </div>
+          {{ ui.picker('role_ids', 'Automatische Rollen', 'roles', '', true) }}
+          {{ ui.savebar() }}
+        </section>
+        <aside class="preview-column">
+          <div class="discord-preview">
+            <div class="discord-channel"># willkommen</div>
+            <div class="discord-message"><div class="fake-avatar">Z</div><div><div class="discord-author">zyrahd.net <span>BOT</span><small>Heute um 20:42</small></div><div class="discord-embed"><b data-preview="title">Willkommen auf dem Server</b><p data-preview="message">Willkommen @User! Schön, dass du da bist.</p><div class="preview-member"><span class="fake-user">U</span><div><strong>Neues Mitglied</strong><small>Mitglied #8.429</small></div></div></div></div></div>
+          </div>
+        </aside>
+      </form>
+
+      {% elif active_section == 'verify' %}
+      <section class="page-heading reveal"><div><span class="eyebrow">MEMBER GATE</span><h2>Sicher und reibungslos verifizieren</h2><p>Ein Klick für Mitglieder, volle Kontrolle für dein Team.</p></div><button class="button button-secondary" type="button" data-action="publish-verify">Panel veröffentlichen →</button></section>
+      <form class="settings-layout reveal delay-1" data-form="settings" data-area="verify">
+        <section class="panel">
+          {{ ui.toggle('enabled', 'Verify-System aktiv') }}
+          <div class="form-grid two">
+            {{ ui.picker('channel_id', 'Verify-Kanal', 'channels', 'text,announcement') }}
+            {{ ui.picker('role_id', 'Verifizierungsrolle', 'roles') }}
+          </div>
+          {{ ui.picker('remove_role_ids', 'Nach Verify entfernen', 'roles', '', true) }}
+          <div class="field"><label>Panel-Titel</label><input name="title" maxlength="256"></div>
+          <div class="field"><label>Beschreibung</label><textarea name="description" rows="5" maxlength="4000"></textarea></div>
+          <div class="form-grid three">
+            <div class="field"><label>Button-Text</label><input name="button_text" maxlength="80"></div>
+            <div class="field"><label>Button-Emoji</label><input name="button_emoji" maxlength="32"></div>
+            <div class="field"><label>Konto-Mindestalter</label><input type="number" name="minimum_account_days" min="0" max="3650"><small class="field-hint">in Tagen</small></div>
+          </div>
+          {{ ui.picker('log_channel_id', 'Log-Kanal', 'channels', 'text,announcement') }}
+          {{ ui.toggle('dm_enabled', 'Erfolgsnachricht per DM') }}
+          <input type="hidden" name="color" value="#8b5cf6">
+          {{ ui.savebar() }}
+        </section>
+        <aside class="info-card"><span>✓</span><h3>Persistent & zuverlässig</h3><p>Der Button funktioniert auch nach einem Neustart. Kontoalter und Rollen werden bei jedem Klick geprüft.</p></aside>
+      </form>
+
+      {% elif active_section == 'security' %}
+      <section class="page-heading reveal"><div><span class="eyebrow">SMART PROTECTION</span><h2>Schutz, ohne Gespräche zu stören</h2><p>Fein abgestimmte Regeln statt pauschaler Einschränkungen.</p></div><span class="security-score"><i></i> Schutz aktiv</span></section>
+      <div class="security-layout reveal delay-1">
+        <form class="panel" data-form="settings" data-area="security">
+          <div class="panel-heading"><div><small>AUTOMOD</small><h3>Schutzmodule</h3></div></div>
+          {{ ui.toggle('anti_spam', 'Anti-Spam', 'Erkennt zu viele Nachrichten in kurzer Zeit.') }}
+          <div class="form-grid two nested-settings"><div class="field"><label>Nachrichten</label><input type="number" name="spam_messages" min="3" max="30"></div><div class="field"><label>Zeitfenster (Sek.)</label><input type="number" name="spam_seconds" min="2" max="60"></div></div>
+          {{ ui.toggle('anti_invites', 'Discord-Einladungen blockieren') }}
+          {{ ui.toggle('anti_links', 'Externe Links blockieren') }}
+          {{ ui.toggle('anti_caps', 'Übermäßige Großschreibung') }}
+          <div class="form-grid two nested-settings"><div class="field"><label>Caps-Grenze (%)</label><input type="number" name="caps_percentage" min="50" max="100"></div><div class="field"><label>Erwähnungs-Limit</label><input type="number" name="mention_limit" min="1" max="50"></div></div>
+          {{ ui.picker('exempt_role_ids', 'Ausgenommene Rollen', 'roles', '', true) }}
+          {{ ui.picker('exempt_channel_ids', 'Ausgenommene Kanäle', 'channels', 'text,announcement', true) }}
+          {{ ui.picker('log_channel_id', 'Sicherheits-Log', 'channels', 'text,announcement') }}
+          {{ ui.savebar('Schutzregeln speichern') }}
+        </form>
+        <section class="panel">
+          <div class="panel-heading"><div><small>WORTFILTER</small><h3>Individuelle Begriffe</h3></div><button class="text-button" type="button" data-action="show-word-filter">＋ Hinzufügen</button></div>
+          <form class="sub-form" data-form="word-filter">
+            <div class="field"><label>Wort oder Ausdruck</label><input name="phrase" maxlength="120" required></div>
+            <div class="form-grid two"><div class="field"><label>Treffer</label><select name="match_type"><option value="contains">Enthält Ausdruck</option><option value="exact">Exaktes Wort</option></select></div><div class="field"><label>Aktion</label><select name="action"><option value="delete">Löschen</option><option value="warn">Verwarnen</option><option value="timeout">Timeout</option><option value="kick">Kick</option><option value="ban">Ban</option></select></div></div>
+            <button class="button button-secondary" type="submit">Filter hinzufügen</button>
+          </form>
+          <div class="filter-list" data-word-filter-list><div class="empty-state">Filter werden geladen …</div></div>
+        </section>
+      </div>
+
+      {% elif active_section == 'moderation' %}
+      <section class="page-heading reveal"><div><span class="eyebrow">MOD CENTER</span><h2>Konsequent. Fair. Nachvollziehbar.</h2><p>Führe Sanktionen aus und behalte jeden Fall im Blick.</p></div></section>
+      <section class="moderation-grid reveal delay-1">
+        <form class="panel" data-form="moderation">
+          <div class="panel-heading"><div><small>NEUER FALL</small><h3>Moderationsaktion</h3></div></div>
+          {{ ui.picker('user_id', 'Mitglied', 'members') }}
+          <div class="form-grid two"><div class="field"><label>Aktion</label><select name="action"><option value="warn">Verwarnung</option><option value="timeout">Timeout</option><option value="untimeout">Timeout entfernen</option><option value="kick">Kick</option><option value="ban">Ban</option><option value="unban">Entbannen</option></select></div><div class="field"><label>Dauer (Minuten)</label><input type="number" name="duration_minutes" min="1" max="40320" value="10"></div></div>
+          <div class="field"><label>Begründung</label><textarea name="reason" rows="4" maxlength="500" required></textarea></div>
+          {{ ui.savebar('Aktion ausführen') }}
+        </form>
+        <article class="panel">
+          <div class="panel-heading"><div><small>VERLAUF</small><h3>Letzte Fälle</h3></div></div>
+          <div class="case-list" data-case-list><div class="empty-state">Fälle werden geladen …</div></div>
+        </article>
+      </section>
+
+      {% elif active_section == 'designer' %}
+      <section class="page-heading reveal"><div><span class="eyebrow">MESSAGE STUDIO</span><h2>Discord-Nachrichten, die auffallen</h2><p>Erstellen, live prüfen und direkt veröffentlichen.</p></div></section>
+      <form class="designer-layout reveal delay-1" data-form="embed">
+        <section class="panel">
+          {{ ui.picker('channel_id', 'Zielkanal', 'channels', 'text,announcement') }}
+          <div class="field"><label>Normaler Nachrichtentext</label><textarea name="content" rows="2" maxlength="2000"></textarea></div>
+          <div class="form-grid two"><div class="field"><label>Embed-Titel</label><input name="title" maxlength="256"></div><div class="field"><label>Farbe</label><div class="color-input"><input type="color" name="color_picker" value="#8b5cf6"><input name="color" value="#8b5cf6"></div></div></div>
+          <div class="field"><label>Beschreibung</label><textarea name="description" rows="8" maxlength="4000"></textarea></div>
+          <div class="field"><label>Footer</label><input name="footer" maxlength="2048"></div>
+          <div class="form-grid two"><div class="field"><label>Bild-URL</label><input type="url" name="image_url"></div><div class="field"><label>Thumbnail-URL</label><input type="url" name="thumbnail_url"></div></div>
+          {{ ui.savebar('An Discord senden') }}
+        </section>
+        <aside class="preview-column sticky">
+          <span class="preview-label">LIVE-VORSCHAU</span>
+          <div class="discord-preview designer-preview">
+            <div class="discord-channel"># ausgewählter-kanal</div>
+            <div class="discord-message"><div class="fake-avatar">Z</div><div><div class="discord-author">zyrahd.net <span>BOT</span><small>Heute um 20:42</small></div><p data-embed-preview="content"></p><div class="discord-embed" data-embed-card><b data-embed-preview="title">Dein Embed-Titel</b><p data-embed-preview="description">Die Vorschau aktualisiert sich während du schreibst.</p><img data-embed-preview-image alt=""><small class="embed-footer" data-embed-preview="footer">zyrahd.net</small></div></div></div>
+          </div>
+        </aside>
+      </form>
+
+      {% elif active_section == 'announcements' %}
+      <section class="page-heading reveal"><div><span class="eyebrow">TEAM COMMS</span><h2>Alle wissen, was wichtig ist</h2><p>Interne Ankündigungen zielgerichtet veröffentlichen.</p></div></section>
+      <section class="settings-layout reveal delay-1">
+        <form class="panel" data-form="announcement">
+          <div class="field"><label>Titel</label><input name="title" maxlength="256" required></div>
+          <div class="field"><label>Nachricht</label><textarea name="content" rows="8" maxlength="4000" required></textarea></div>
+          <div class="form-grid two"><div class="field"><label>Priorität</label><select name="priority"><option value="normal">Normal</option><option value="important">Wichtig</option><option value="urgent">Dringend</option></select></div>{{ ui.picker('channel_id', 'Discord-Kanal', 'channels', 'text,announcement') }}</div>
+          {{ ui.picker('target_role_ids', 'Zielrollen', 'roles', '', true) }}
+          {{ ui.toggle('require_confirmation', 'Bestätigung erforderlich', 'Teammitglieder bestätigen die Nachricht per Button.') }}
+          {{ ui.savebar('Ankündigung veröffentlichen') }}
+        </form>
+        <article class="panel"><div class="panel-heading"><div><small>HISTORIE</small><h3>Veröffentlichungen</h3></div></div><div class="announcement-list" data-announcement-list><div class="empty-state">Ankündigungen werden geladen …</div></div></article>
+      </section>
+
+      {% elif active_section == 'permissions' %}
+      <section class="page-heading reveal"><div><span class="eyebrow">ACCESS CONTROL</span><h2>Die richtigen Werkzeuge für jede Rolle</h2><p>Zugriffe werden im Menü und auf jeder API-Anfrage geprüft.</p></div></section>
+      <section class="permission-layout reveal delay-1">
+        <article class="panel"><div class="panel-heading"><div><small>DISCORD-ROLLEN</small><h3>Zugewiesene Rollen</h3></div></div><div class="grant-list" data-grant-list><div class="empty-state">Rollen werden geladen …</div></div></article>
+        <form class="panel" data-form="permissions">
+          <div class="panel-heading"><div><small>BERECHTIGUNGEN</small><h3>Rolle konfigurieren</h3></div></div>
+          {{ ui.picker('role_id', 'Discord-Rolle', 'roles') }}
+          <input type="hidden" name="role_name">
+          <div class="permission-checks" data-permission-checks></div>
+          {{ ui.savebar('Berechtigungen speichern') }}
+        </form>
+      </section>
+
+      {% elif active_section == 'audit' %}
+      <section class="page-heading reveal"><div><span class="eyebrow">CHANGE HISTORY</span><h2>Jede Änderung nachvollziehbar</h2><p>Wer hat wann welchen Bereich verändert?</p></div><button class="button button-ghost" type="button" data-action="refresh">↻ Aktualisieren</button></section>
+      <section class="panel reveal delay-1">
+        <div class="audit-table table-scroll"><table><thead><tr><th>Zeitpunkt</th><th>Benutzer</th><th>Bereich</th><th>Aktion</th><th>Ziel</th></tr></thead><tbody data-audit-list><tr><td colspan="5"><div class="empty-state">Audit-Log wird geladen …</div></td></tr></tbody></table></div>
+      </section>
+      {% endif %}
+    </main>
+  </div>
+  <div class="sidebar-scrim" data-action="toggle-sidebar"></div>
+</div>
+
+<div class="modal" data-modal="web-ticket" aria-hidden="true">
+  <div class="modal-backdrop" data-action="close-modal"></div>
+  <section class="modal-card">
+    <button class="modal-close" type="button" data-action="close-modal">×</button>
+    <span class="eyebrow">NEUES TICKET</span><h2>Wie können wir helfen?</h2>
+    <form data-form="web-ticket">
+      <div class="field"><label>Ticket-Art</label><select name="ticket_type_id" data-web-ticket-types required></select></div>
+      <div data-web-ticket-fields></div>
+      <button class="button button-primary full" type="submit">🎫 Ticket erstellen</button>
+    </form>
+  </section>
+</div>
+<div class="toast-stack runtime-toasts" data-toasts aria-live="polite"></div>
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}Anfrage abgelaufen · zyrahd.net{% endblock %}
+{% block body_class %}error-body{% endblock %}
+{% block body %}
+<main class="error-page"><span>400</span><h1>Die Sicherheitsprüfung ist abgelaufen.</h1><p>Lade die Seite neu und versuche es anschließend noch einmal.</p><a class="button button-primary" href="{{ url_for('pages.index') }}">Seite neu laden</a></main>
+{% endblock %}
