@@ -1,0 +1,121 @@
+{% extends "partials/shell.html" %}
+{% block title %}Ticket-Arten · zyrahd.net{% endblock %}
+{% block page_title %}Ticket-Arten{% endblock %}
+{% block page_subtitle %}Arten, Formulare und Zuständigkeiten{% endblock %}
+{% block content %}
+<div class="panel" style="margin-bottom:18px">
+  <div class="panel-header"><h2>Neue Ticket-Art</h2>
+    <button type="button" class="btn btn-ghost btn-sm" data-refresh-discord>Rollen/Kanäle aktualisieren</button>
+  </div>
+  <form method="post" class="form-grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="form_action" value="create">
+    <div class="form-row"><label>Name</label><input name="name" required></div>
+    <div class="form-row"><label>Emoji</label><input name="emoji" value="🎫"></div>
+    <div class="form-row"><label>Beschreibung</label><input name="description"></div>
+    <div class="form-row"><label>Farbe</label><input type="color" name="color" value="#9B5CFF"></div>
+    <div class="form-row" style="grid-column:1/-1"><button class="btn btn-primary" type="submit">Erstellen</button></div>
+  </form>
+</div>
+
+{% for t in types %}
+<div class="panel" style="margin-bottom:18px;border-top:3px solid {{ t.color }}">
+  <div class="panel-header">
+    <h2>{{ t.emoji }} {{ t.name }} {% if not t.enabled %}<span class="badge danger">deaktiviert</span>{% endif %}</h2>
+  </div>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="form_action" value="update">
+    <input type="hidden" name="id" value="{{ t.id }}">
+    <div class="form-grid">
+      <div class="form-row"><label>Name</label><input name="name" value="{{ t.name }}"></div>
+      <div class="form-row"><label>Emoji</label><input name="emoji" value="{{ t.emoji }}"></div>
+      <div class="form-row"><label>Beschreibung</label><input name="description" value="{{ t.description }}"></div>
+      <div class="form-row"><label>Farbe</label><input type="color" name="color" value="{{ t.color }}"></div>
+      <div class="form-row">
+        <label>Kategorie</label>
+        <div data-discord-select data-type="channels" data-channel-type="category" data-name="category_id" data-multiple="false"
+             data-selected='{{ t.category_id or "" }}' data-placeholder="Kategorie suchen…"></div>
+      </div>
+      <div class="form-row">
+        <label>Zuständige Rollen</label>
+        <div data-discord-select data-type="roles" data-name="staff_role_ids" data-multiple="true"
+             data-selected='{{ t.get_staff_roles()|tojson }}' data-placeholder="Rollen suchen…"></div>
+      </div>
+      <div class="form-row">
+        <label>Log-Kanal</label>
+        <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="log_channel_id" data-multiple="false"
+             data-selected='{{ t.log_channel_id or "" }}' data-placeholder="Kanal suchen…"></div>
+      </div>
+      <div class="form-row">
+        <label>Transcript-Kanal</label>
+        <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="transcript_channel_id" data-multiple="false"
+             data-selected='{{ t.transcript_channel_id or "" }}' data-placeholder="Kanal suchen…"></div>
+      </div>
+      <div class="form-row"><label>Max. offen / User</label><input type="number" name="max_open_per_user" value="{{ t.max_open_per_user }}"></div>
+      <div class="form-row"><label>Cooldown (Sek.)</label><input type="number" name="cooldown_seconds" value="{{ t.cooldown_seconds }}"></div>
+      <div class="form-row"><label>Kanal-Format</label><input name="name_format" value="{{ t.name_format }}"></div>
+      <div class="form-row"><label>Priorität</label>
+        <select name="priority">{% for p in ['low','normal','high','urgent'] %}<option value="{{ p }}" {% if t.priority==p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select>
+      </div>
+      <div class="form-row" style="grid-column:1/-1"><label>Begrüßung</label><textarea name="greeting_message">{{ t.greeting_message }}</textarea></div>
+      <div class="form-row"><label>Inaktivität schließen (h)</label><input type="number" name="inactivity_close_hours" value="{{ t.inactivity_close_hours }}"></div>
+      <div class="form-row"><label class="checkbox"><input type="checkbox" name="ping_staff" {% if t.ping_staff %}checked{% endif %}> Staff pingen</label>
+        <label class="checkbox"><input type="checkbox" name="enabled" {% if t.enabled %}checked{% endif %}> Aktiv</label>
+        <label class="checkbox"><input type="checkbox" name="hours_enabled"> Öffnungszeiten aktiv</label>
+      </div>
+      <div class="form-row"><label>Von</label><input name="hours_start" value="09:00"></div>
+      <div class="form-row"><label>Bis</label><input name="hours_end" value="22:00"></div>
+    </div>
+    <div class="actions"><button class="btn btn-primary" type="submit">Speichern</button></div>
+  </form>
+
+  <div class="divider"></div>
+  <h3>Formularfelder</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Label</th><th>Typ</th><th>Pflicht</th><th></th></tr></thead>
+      <tbody>
+      {% for f in t.fields|sort(attribute='sort_order') %}
+        <tr>
+          <td>{{ f.label }}</td>
+          <td>{{ f.field_type }}</td>
+          <td>{{ 'Ja' if f.required else 'Nein' }}</td>
+          <td>
+            <form method="post" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="form_action" value="delete_field">
+              <input type="hidden" name="field_id" value="{{ f.id }}">
+              <button class="btn btn-danger btn-sm" type="submit">×</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="help">Keine Felder.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form method="post" class="form-grid" style="margin-top:12px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="form_action" value="add_field">
+    <input type="hidden" name="ticket_type_id" value="{{ t.id }}">
+    <div class="form-row"><label>Label</label><input name="label" required></div>
+    <div class="form-row"><label>Typ</label>
+      <select name="field_type"><option value="short">Kurz</option><option value="long">Lang</option><option value="select">Auswahl</option></select>
+    </div>
+    <div class="form-row"><label>Platzhalter</label><input name="placeholder"></div>
+    <div class="form-row"><label>Optionen (Komma)</label><input name="options"></div>
+    <div class="form-row"><label class="checkbox"><input type="checkbox" name="required" checked> Pflichtfeld</label></div>
+    <div class="form-row"><button class="btn btn-ghost" type="submit">Feld hinzufügen</button></div>
+  </form>
+
+  <form method="post" style="margin-top:16px" onsubmit="return confirm('Wirklich löschen?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="form_action" value="delete">
+    <input type="hidden" name="id" value="{{ t.id }}">
+    <button class="btn btn-danger btn-sm" type="submit">Ticket-Art löschen</button>
+  </form>
+</div>
+{% endfor %}
+{% endblock %}

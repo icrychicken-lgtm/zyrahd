@@ -1,0 +1,22 @@
+{% extends "partials/shell.html" %}
+{% block title %}Temp-Voice · zyrahd.net{% endblock %}
+{% block page_title %}Temporäre Sprachkanäle{% endblock %}
+{% block content %}
+<form method="post" class="panel">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label class="checkbox"><input type="checkbox" name="enabled" {% if cfg.enabled %}checked{% endif %}> Aktiv</label>
+  <div class="form-row">
+    <label>Erstellkanal (Voice)</label>
+    <div data-discord-select data-type="channels" data-channel-type="voice" data-name="create_channel_id" data-multiple="false"
+         data-selected='{{ cfg.create_channel_id or "" }}'></div>
+  </div>
+  <div class="form-row">
+    <label>Kategorie</label>
+    <div data-discord-select data-type="channels" data-channel-type="category" data-name="category_id" data-multiple="false"
+         data-selected='{{ cfg.category_id or "" }}'></div>
+  </div>
+  <div class="form-row"><label>Namensformat</label><input name="name_format" value="{{ cfg.name_format }}"></div>
+  <div class="form-row"><label>User-Limit (0 = unbegrenzt)</label><input type="number" name="user_limit" value="{{ cfg.user_limit }}"></div>
+  <button class="btn btn-primary" type="submit">Speichern</button>
+</form>
+{% endblock %}

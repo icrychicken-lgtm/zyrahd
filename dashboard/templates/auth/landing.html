@@ -1,0 +1,22 @@
+{% extends "partials/base.html" %}
+{% block title %}zyrahd.net — Login{% endblock %}
+{% block body %}
+<section class="landing">
+  <div class="landing-card">
+    <div class="brand-mark">Z</div>
+    <h1>zyrahd.net</h1>
+    <p class="tagline">
+      Modernes Discord Control Center — Tickets, Sicherheit, Team &amp; mehr.
+      Melde dich mit Discord an, um fortzufahren.
+    </p>
+    {% if current_user %}
+      <a class="btn btn-primary btn-block" href="{{ url_for('main.dashboard') }}">Zum Dashboard</a>
+    {% else %}
+      <a class="btn btn-primary btn-block" href="{{ url_for('auth.login') }}">
+        Mit Discord anmelden
+      </a>
+    {% endif %}
+    <p class="help" style="margin-top:18px">Geschützter Bereich · OAuth2 · Rollenbasierte Rechte</p>
+  </div>
+</section>
+{% endblock %}

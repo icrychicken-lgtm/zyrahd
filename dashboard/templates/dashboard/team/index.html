@@ -1,0 +1,74 @@
+{% extends "partials/shell.html" %}
+{% block title %}Team · zyrahd.net{% endblock %}
+{% block page_title %}Team{% endblock %}
+{% block page_subtitle %}Aktivität, Rangliste und Mitglieder{% endblock %}
+{% block content %}
+<div class="grid grid-2">
+  <div class="panel">
+    <div class="panel-header"><h2>Ticket-Rangliste</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Mitglied</th><th>Tickets</th></tr></thead>
+        <tbody>
+        {% for row in leaderboard %}
+          <tr><td>{{ row.name }}</td><td>{{ row.tickets }}</td></tr>
+        {% else %}
+          <tr><td colspan="2" class="empty">Noch keine Daten.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Ankündigungen</h2>
+      {% if can('team.manage') %}<a class="btn btn-ghost btn-sm" href="{{ url_for('team.announcements') }}">Verwalten</a>{% endif %}
+    </div>
+    {% for a in announcements %}
+      <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(167,139,250,.1)">
+        <strong>{{ a.title }}</strong>
+        <span class="badge">{{ a.priority }}</span>
+        <div class="help">{{ a.message[:140] }}{% if a.message|length > 140 %}…{% endif %}</div>
+      </div>
+    {% else %}
+      <div class="empty">Keine Ankündigungen.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="panel" style="margin-top:18px">
+  <div class="panel-header"><h2>Teammitglieder</h2></div>
+  {% if can('team.manage') %}
+  <form method="post" action="{{ url_for('team.upsert_member') }}" class="form-grid" style="margin-bottom:16px">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-row"><label>Discord User-ID</label><input name="user_id" required></div>
+    <div class="form-row"><label>Username</label><input name="username"></div>
+    <div class="form-row"><label>Display</label><input name="display_name"></div>
+    <div class="form-row"><label>Status</label>
+      <select name="status"><option value="active">active</option><option value="away">away</option><option value="vacation">vacation</option></select>
+    </div>
+    <div class="form-row" style="grid-column:1/-1"><label>Notizen</label><textarea name="notes"></textarea></div>
+    <div class="form-row"><button class="btn btn-primary" type="submit">Speichern</button></div>
+  </form>
+  {% endif %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>User</th><th>Status</th><th>Tickets</th><th>Mods</th><th>Kudos</th><th>Notizen</th></tr></thead>
+      <tbody>
+      {% for m in members %}
+        <tr>
+          <td>{{ m.display_name or m.username or m.user_id }}</td>
+          <td><span class="badge">{{ m.status }}</span></td>
+          <td>{{ m.tickets_handled }}</td>
+          <td>{{ m.mod_cases }}</td>
+          <td>{{ m.kudos }}</td>
+          <td class="help">{{ m.notes[:80] }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="empty">Noch keine Teammitglieder hinterlegt.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

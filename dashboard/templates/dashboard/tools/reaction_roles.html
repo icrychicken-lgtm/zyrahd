@@ -1,0 +1,61 @@
+{% extends "partials/shell.html" %}
+{% block title %}Reaction Roles · zyrahd.net{% endblock %}
+{% block page_title %}Reaction- & Button-Rollen{% endblock %}
+{% block content %}
+<div class="panel" style="margin-bottom:18px">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="form_action" value="create">
+    <div class="form-grid">
+      <div class="form-row"><label>Name</label><input name="name" value="Rollen-Panel"></div>
+      <div class="form-row"><label>Titel</label><input name="title" value="Rollen wählen"></div>
+      <div class="form-row" style="grid-column:1/-1"><label>Beschreibung</label><textarea name="description"></textarea></div>
+      <div class="form-row"><label>Farbe</label><input type="color" name="color" value="#9B5CFF"></div>
+      <div class="form-row">
+        <label>Kanal</label>
+        <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="channel_id" data-multiple="false"></div>
+      </div>
+      <div class="form-row"><label class="checkbox"><input type="checkbox" name="exclusive"> Exklusive Rollen</label></div>
+    </div>
+    <div class="divider"></div>
+    <h3>Rollen (bis zu 5 Einträge)</h3>
+    {% for i in range(5) %}
+      <div class="form-grid">
+        <div class="form-row">
+          <label>Rolle</label>
+          <div data-discord-select data-type="roles" data-name="role_id" data-multiple="false"></div>
+        </div>
+        <div class="form-row"><label>Label</label><input name="role_label" placeholder="Label"></div>
+        <div class="form-row"><label>Emoji</label><input name="role_emoji" placeholder="🎮"></div>
+      </div>
+    {% endfor %}
+    <button class="btn btn-primary" type="submit">Erstellen & senden</button>
+  </form>
+</div>
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Titel</th><th>Exklusiv</th><th></th></tr></thead>
+      <tbody>
+      {% for p in panels %}
+        <tr>
+          <td>{{ p.name }}</td>
+          <td>{{ p.title }}</td>
+          <td>{{ 'Ja' if p.exclusive else 'Nein' }}</td>
+          <td>
+            <form method="post">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="form_action" value="delete">
+              <input type="hidden" name="id" value="{{ p.id }}">
+              <button class="btn btn-danger btn-sm" type="submit">×</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="empty">Keine Panels.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

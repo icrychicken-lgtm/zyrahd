@@ -1,0 +1,49 @@
+{% extends "partials/shell.html" %}
+{% block title %}Team-Ankündigungen · zyrahd.net{% endblock %}
+{% block page_title %}Team-Ankündigungen{% endblock %}
+{% block content %}
+<div class="panel" style="margin-bottom:18px">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-row"><label>Titel</label><input name="title" required></div>
+    <div class="form-row"><label>Nachricht</label><textarea name="message" required></textarea></div>
+    <div class="form-grid">
+      <div class="form-row"><label>Priorität</label>
+        <select name="priority"><option value="low">low</option><option value="normal" selected>normal</option><option value="high">high</option><option value="urgent">urgent</option></select>
+      </div>
+      <div class="form-row">
+        <label>Kanal</label>
+        <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="channel_id" data-multiple="false"></div>
+      </div>
+      <div class="form-row">
+        <label>Zielrollen</label>
+        <div data-discord-select data-type="roles" data-name="target_role_ids" data-multiple="true"></div>
+      </div>
+      <div class="form-row"><label>Veröffentlichen am</label><input type="datetime-local" name="publish_at"></div>
+    </div>
+    <label class="checkbox"><input type="checkbox" name="require_ack"> Bestätigung erforderlich</label>
+    <label class="checkbox"><input type="checkbox" name="publish_now" checked> Jetzt veröffentlichen</label>
+    <div class="actions" style="margin-top:12px"><button class="btn btn-primary" type="submit">Erstellen</button></div>
+  </form>
+</div>
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Titel</th><th>Priorität</th><th>Status</th><th>Von</th><th>Erstellt</th></tr></thead>
+      <tbody>
+      {% for a in items %}
+        <tr>
+          <td>{{ a.title }}</td>
+          <td><span class="badge">{{ a.priority }}</span></td>
+          <td>{% if a.published %}<span class="badge ok">live</span>{% else %}<span class="badge warn">geplant</span>{% endif %}</td>
+          <td>{{ a.created_by_name }}</td>
+          <td>{{ a.created_at.strftime('%d.%m.%Y %H:%M') if a.created_at else '' }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="empty">Keine Ankündigungen.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

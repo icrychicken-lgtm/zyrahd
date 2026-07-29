@@ -1,0 +1,34 @@
+{% extends "partials/shell.html" %}
+{% block title %}Embeds · zyrahd.net{% endblock %}
+{% block page_title %}Embed- & Regel-Designer{% endblock %}
+{% block page_subtitle %}Nachrichten mit Live-Vorschau erstellen{% endblock %}
+{% block content %}
+<div class="panel" style="margin-bottom:18px">
+  <a class="btn btn-primary" href="{{ url_for('embeds.editor') }}">Neues Embed</a>
+</div>
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Name</th><th>Kategorie</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for e in embeds %}
+        <tr>
+          <td>{{ e.name }}</td>
+          <td>{{ e.category }}</td>
+          <td>{% if e.published %}<span class="badge ok">veröffentlicht</span>{% else %}<span class="badge"> Entwurf</span>{% endif %}</td>
+          <td class="actions">
+            <a class="btn btn-ghost btn-sm" href="{{ url_for('embeds.editor', embed_id=e.id) }}">Bearbeiten</a>
+            <form method="post" action="{{ url_for('embeds.delete', embed_id=e.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-danger btn-sm" type="submit">×</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="empty">Noch keine Embeds.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

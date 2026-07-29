@@ -1,0 +1,34 @@
+{% extends "partials/shell.html" %}
+{% block title %}Audit-Log · zyrahd.net{% endblock %}
+{% block page_title %}Audit-Log{% endblock %}
+{% block page_subtitle %}Alle Dashboard-Änderungen{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Zeit</th>
+          <th>Benutzer</th>
+          <th>Bereich</th>
+          <th>Aktion</th>
+          <th>IP</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for log in logs %}
+        <tr>
+          <td>{{ log.created_at.strftime('%d.%m.%Y %H:%M') if log.created_at else '—' }}</td>
+          <td>{{ log.username }} <span class="help">{{ log.user_id }}</span></td>
+          <td><span class="badge">{{ log.area }}</span></td>
+          <td>{{ log.action }}</td>
+          <td class="help">{{ log.ip_address or '—' }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="empty">Keine Einträge.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

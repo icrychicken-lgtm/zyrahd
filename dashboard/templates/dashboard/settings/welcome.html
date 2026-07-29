@@ -1,0 +1,55 @@
+{% extends "partials/shell.html" %}
+{% block title %}Willkommen · zyrahd.net{% endblock %}
+{% block page_title %}Willkommen & Abschied{% endblock %}
+{% block page_subtitle %}Platzhalter: {user} {username} {display_name} {mention} {server} {member_count} {created_at} {joined_at}{% endblock %}
+{% block content %}
+<div class="grid grid-2">
+  <form method="post" class="panel">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="section" value="welcome">
+    <div class="panel-header"><h2>Willkommen</h2></div>
+    <label class="checkbox"><input type="checkbox" name="enabled" {% if welcome.enabled %}checked{% endif %}> Aktiv</label>
+    <div class="form-row">
+      <label>Kanal</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="channel_id" data-multiple="false"
+           data-selected='{{ welcome.channel_id or "" }}'></div>
+    </div>
+    <label class="checkbox"><input type="checkbox" name="use_embed" {% if welcome.use_embed %}checked{% endif %}> Embed verwenden</label>
+    <div class="form-row"><label>Titel</label><input name="title" value="{{ welcome.title }}"></div>
+    <div class="form-row"><label>Beschreibung</label><textarea name="description">{{ welcome.description }}</textarea></div>
+    <div class="form-row"><label>Farbe</label><input type="color" name="color" value="{{ welcome.color }}"></div>
+    <div class="form-row"><label>Thumbnail-URL</label><input name="thumbnail_url" value="{{ welcome.thumbnail_url }}"></div>
+    <div class="form-row"><label>Bild-URL</label><input name="image_url" value="{{ welcome.image_url }}"></div>
+    <div class="form-row"><label>Footer</label><input name="footer" value="{{ welcome.footer }}"></div>
+    <div class="form-row"><label>Textnachricht</label><textarea name="plain_message">{{ welcome.plain_message }}</textarea></div>
+    <div class="form-row">
+      <label>Automatische Rollen</label>
+      <div data-discord-select data-type="roles" data-name="role_ids" data-multiple="true"
+           data-selected='{{ welcome.get_roles()|tojson }}'></div>
+    </div>
+    <label class="checkbox"><input type="checkbox" name="dm_enabled" {% if welcome.dm_enabled %}checked{% endif %}> Willkommens-DM</label>
+    <div class="form-row"><label>DM-Text</label><textarea name="dm_message">{{ welcome.dm_message }}</textarea></div>
+    <button class="btn btn-primary" type="submit">Speichern</button>
+  </form>
+
+  <form method="post" class="panel">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="section" value="goodbye">
+    <div class="panel-header"><h2>Abschied</h2></div>
+    <label class="checkbox"><input type="checkbox" name="enabled" {% if goodbye.enabled %}checked{% endif %}> Aktiv</label>
+    <div class="form-row">
+      <label>Kanal</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="channel_id" data-multiple="false"
+           data-selected='{{ goodbye.channel_id or "" }}'></div>
+    </div>
+    <label class="checkbox"><input type="checkbox" name="use_embed" {% if goodbye.use_embed %}checked{% endif %}> Embed verwenden</label>
+    <div class="form-row"><label>Titel</label><input name="title" value="{{ goodbye.title }}"></div>
+    <div class="form-row"><label>Beschreibung</label><textarea name="description">{{ goodbye.description }}</textarea></div>
+    <div class="form-row"><label>Farbe</label><input type="color" name="color" value="{{ goodbye.color }}"></div>
+    <div class="form-row"><label>Bild-URL</label><input name="image_url" value="{{ goodbye.image_url }}"></div>
+    <div class="form-row"><label>Textnachricht</label><textarea name="plain_message">{{ goodbye.plain_message }}</textarea></div>
+    <label class="checkbox"><input type="checkbox" name="show_kick_ban_reason" {% if goodbye.show_kick_ban_reason %}checked{% endif %}> Kick/Ban-Grund anzeigen</label>
+    <button class="btn btn-primary" type="submit">Speichern</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo">Z</div>
+    <div>
+      <div class="name">zyrahd.net</div>
+      <div class="sub">Discord Control Center</div>
+    </div>
+  </div>
+
+  <div class="nav-section">Übersicht</div>
+  <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}" href="{{ url_for('main.dashboard') }}">
+    <span class="nav-ico">◈</span> Dashboard
+  </a>
+  <a class="nav-link {% if request.endpoint == 'tickets.mine' %}active{% endif %}" href="{{ url_for('tickets.mine') }}">
+    <span class="nav-ico">🎫</span> Meine Tickets
+  </a>
+
+  {% if can('tickets.view') %}
+  <div class="nav-section">Tickets</div>
+  <a class="nav-link {% if request.endpoint == 'tickets.overview' %}active{% endif %}" href="{{ url_for('tickets.overview') }}">
+    <span class="nav-ico">☰</span> Ticket-Übersicht
+  </a>
+  {% if can('tickets.manage') %}
+  <a class="nav-link {% if request.endpoint == 'tickets.types' %}active{% endif %}" href="{{ url_for('tickets.types') }}">
+    <span class="nav-ico">⚙</span> Ticket-Arten
+  </a>
+  <a class="nav-link {% if request.endpoint == 'tickets.panel' %}active{% endif %}" href="{{ url_for('tickets.panel') }}">
+    <span class="nav-ico">▣</span> Ticket-Panel
+  </a>
+  {% endif %}
+  {% endif %}
+
+  {% if can('moderation.use') %}
+  <div class="nav-section">Moderation</div>
+  <a class="nav-link {% if request.endpoint and request.endpoint.startswith('moderation.') %}active{% endif %}" href="{{ url_for('moderation.index') }}">
+    <span class="nav-ico">🛡</span> Fälle
+  </a>
+  {% endif %}
+
+  {% if can('security.manage') %}
+  <div class="nav-section">Sicherheit</div>
+  <a class="nav-link {% if request.endpoint == 'security.index' %}active{% endif %}" href="{{ url_for('security.index') }}">
+    <span class="nav-ico">🔒</span> Automod
+  </a>
+  <a class="nav-link {% if request.endpoint == 'security.words' %}active{% endif %}" href="{{ url_for('security.words') }}">
+    <span class="nav-ico">✕</span> Wortfilter
+  </a>
+  {% endif %}
+
+  {% if can('messages.send') %}
+  <div class="nav-section">Inhalte</div>
+  <a class="nav-link {% if request.endpoint and request.endpoint.startswith('embeds.') %}active{% endif %}" href="{{ url_for('embeds.index') }}">
+    <span class="nav-ico">✦</span> Embed-Designer
+  </a>
+  {% endif %}
+
+  {% if can('team.manage') or can('tickets.view') %}
+  <div class="nav-section">Team</div>
+  <a class="nav-link {% if request.endpoint == 'team.index' %}active{% endif %}" href="{{ url_for('team.index') }}">
+    <span class="nav-ico">◎</span> Team
+  </a>
+  {% if can('team.manage') %}
+  <a class="nav-link {% if request.endpoint == 'team.announcements' %}active{% endif %}" href="{{ url_for('team.announcements') }}">
+    <span class="nav-ico">📢</span> Ankündigungen
+  </a>
+  {% endif %}
+  {% endif %}
+
+  {% if can('server.manage') %}
+  <div class="nav-section">Server</div>
+  <a class="nav-link {% if request.endpoint and request.endpoint.startswith('tools.') %}active{% endif %}" href="{{ url_for('tools.index') }}">
+    <span class="nav-ico">🧰</span> Tools
+  </a>
+  <a class="nav-link {% if request.endpoint and request.endpoint.startswith('settings.') %}active{% endif %}" href="{{ url_for('settings.index') }}">
+    <span class="nav-ico">⚙</span> Einstellungen
+  </a>
+  {% endif %}
+
+  {% if can('audit.view') %}
+  <div class="nav-section">System</div>
+  <a class="nav-link {% if request.endpoint == 'main.audit' %}active{% endif %}" href="{{ url_for('main.audit') }}">
+    <span class="nav-ico">📋</span> Audit-Log
+  </a>
+  {% endif %}
+
+  <div class="nav-section">Konto</div>
+  <a class="nav-link" href="{{ url_for('auth.logout') }}">
+    <span class="nav-ico">↩</span> Abmelden
+  </a>
+</aside>

@@ -1,0 +1,73 @@
+{% extends "partials/shell.html" %}
+{% block title %}Embed-Editor · zyrahd.net{% endblock %}
+{% block page_title %}Embed-Editor{% endblock %}
+{% block content %}
+<form method="post" class="grid grid-2">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="panel">
+    <div class="form-row"><label>Name</label><input name="name" value="{{ emb.name if emb else 'Neues Embed' }}" required></div>
+    <div class="form-row"><label>Kategorie</label>
+      <select name="category">
+        {% for c in ['general','rules','team','info','partnership','announcement','faq','application','ticket','verify'] %}
+          <option value="{{ c }}" {% if emb and emb.category==c %}selected{% endif %}>{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Kanal</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="channel_id" data-multiple="false"
+           data-selected='{{ emb.channel_id if emb and emb.channel_id else "" }}'></div>
+    </div>
+    <div class="form-row"><label>Content (über Embed)</label><textarea name="content">{{ emb.content if emb else '' }}</textarea></div>
+    <div class="form-row"><label>Embed-Titel</label><input name="embed_title" value="{{ embed_data.get('title','') }}"></div>
+    <div class="form-row"><label>Beschreibung</label><textarea name="embed_description">{{ embed_data.get('description','') }}</textarea></div>
+    <div class="form-row"><label>Farbe</label><input type="color" name="embed_color" value="{{ embed_data.get('color','#9B5CFF') }}"></div>
+    <div class="form-row"><label>Thumbnail</label><input name="embed_thumbnail" value="{{ embed_data.get('thumbnail','') }}"></div>
+    <div class="form-row"><label>Bild</label><input name="embed_image" value="{{ embed_data.get('image','') }}"></div>
+    <div class="form-row"><label>Author</label><input name="author_name" value="{{ (embed_data.get('author') or {}).get('name','') }}"></div>
+    <div class="form-row"><label>Footer</label><input name="footer_text" value="{{ (embed_data.get('footer') or {}).get('text','') if embed_data.get('footer') is mapping else embed_data.get('footer','') }}"></div>
+    <label class="checkbox"><input type="checkbox" name="embed_timestamp" {% if embed_data.get('timestamp') %}checked{% endif %}> Zeitstempel</label>
+
+    <div class="divider"></div>
+    <h3>Felder</h3>
+    {% set fields = embed_data.get('fields') or [{'name':'','value':''}] %}
+    {% for f in fields %}
+      <div class="form-grid">
+        <div class="form-row"><label>Feldname</label><input name="field_name" value="{{ f.get('name','') }}"></div>
+        <div class="form-row"><label>Feldwert</label><input name="field_value" value="{{ f.get('value','') }}"></div>
+      </div>
+    {% endfor %}
+    <div class="form-grid">
+      <div class="form-row"><label>Neues Feld</label><input name="field_name" placeholder="Name"></div>
+      <div class="form-row"><label>&nbsp;</label><input name="field_value" placeholder="Wert"></div>
+    </div>
+
+    <div class="divider"></div>
+    <h3>Link-Buttons</h3>
+    {% for b in buttons or [{'label':'','url':''}] %}
+      <div class="form-grid">
+        <div class="form-row"><input name="btn_label" value="{{ b.get('label','') }}" placeholder="Label"></div>
+        <div class="form-row"><input name="btn_url" value="{{ b.get('url','') }}" placeholder="https://…"></div>
+      </div>
+    {% endfor %}
+    <div class="form-grid">
+      <div class="form-row"><input name="btn_label" placeholder="Weiteres Label"></div>
+      <div class="form-row"><input name="btn_url" placeholder="https://…"></div>
+    </div>
+
+    <div class="actions" style="margin-top:16px">
+      <button class="btn btn-ghost" type="submit" name="publish" value="0">Speichern</button>
+      <button class="btn btn-primary" type="submit" name="publish" value="1">Veröffentlichen</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h2>Live-Vorschau</h2></div>
+    <div class="embed-preview" id="embed-live-preview">
+      <div class="title">{{ embed_data.get('title','') }}</div>
+      <div class="desc">{{ embed_data.get('description','') }}</div>
+      <div class="footer help" style="margin-top:12px">{{ (embed_data.get('footer') or {}).get('text','') if embed_data.get('footer') is mapping else embed_data.get('footer','') }}</div>
+    </div>
+  </div>
+</form>
+{% endblock %}

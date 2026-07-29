@@ -1,0 +1,52 @@
+{% extends "partials/shell.html" %}
+{% block title %}Vorschläge · zyrahd.net{% endblock %}
+{% block page_title %}Vorschläge{% endblock %}
+{% block content %}
+<div class="panel" style="margin-bottom:18px">
+  <form method="post" class="form-grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="form_action" value="channel">
+    <div class="form-row">
+      <label>Vorschlagskanal</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="channel_id" data-multiple="false"
+           data-selected='{{ channel_id }}'></div>
+    </div>
+    <div class="form-row" style="display:flex;align-items:end"><button class="btn btn-primary" type="submit">Speichern</button></div>
+  </form>
+  <p class="help">Mitglieder nutzen /suggest im Discord.</p>
+</div>
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Autor</th><th>Inhalt</th><th>Votes</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for s in items %}
+        <tr>
+          <td>#{{ s.number }}</td>
+          <td>{{ s.author_name }}</td>
+          <td>{{ s.content[:80] }}</td>
+          <td>👍 {{ s.upvotes }} / 👎 {{ s.downvotes }}</td>
+          <td>{{ s.status }}</td>
+          <td>
+            <form method="post" class="actions">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="form_action" value="status">
+              <input type="hidden" name="id" value="{{ s.id }}">
+              <select name="status">
+                {% for st in ['open','planned','accepted','rejected','done'] %}
+                  <option value="{{ st }}" {% if s.status==st %}selected{% endif %}>{{ st }}</option>
+                {% endfor %}
+              </select>
+              <input name="staff_comment" placeholder="Kommentar" value="{{ s.staff_comment }}">
+              <button class="btn btn-ghost btn-sm" type="submit">OK</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="empty">Keine Vorschläge.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

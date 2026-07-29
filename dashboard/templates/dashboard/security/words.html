@@ -1,0 +1,63 @@
+{% extends "partials/shell.html" %}
+{% block title %}Wortfilter · zyrahd.net{% endblock %}
+{% block page_title %}Wortfilter{% endblock %}
+{% block content %}
+<div class="panel" style="margin-bottom:18px">
+  <form method="post" class="form-grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="form_action" value="create">
+    <div class="form-row"><label>Wort / Ausdruck</label><input name="pattern" required></div>
+    <div class="form-row"><label>Match</label>
+      <select name="match_type"><option value="contains">enthält</option><option value="exact">exakt</option></select>
+    </div>
+    <div class="form-row"><label>Timeout (Sek.)</label><input type="number" name="timeout_seconds" value="0"></div>
+    <div class="form-row"><label>Strikes bis Strafe</label><input type="number" name="strikes_needed" value="1"></div>
+    <div class="form-row" style="grid-column:1/-1"><label>Antwortnachricht</label><input name="response_message"></div>
+    <div class="form-row">
+      <label class="checkbox"><input type="checkbox" name="delete_message" checked> Nachricht löschen</label>
+      <label class="checkbox"><input type="checkbox" name="warn_user" checked> Warnen</label>
+      <label class="checkbox"><input type="checkbox" name="case_sensitive"> Case-sensitive</label>
+      <label class="checkbox"><input type="checkbox" name="kick"> Kick</label>
+      <label class="checkbox"><input type="checkbox" name="ban"> Ban</label>
+    </div>
+    <div class="form-row">
+      <label>Erlaubte Kanäle</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="allowed_channel_ids" data-multiple="true"></div>
+    </div>
+    <div class="form-row">
+      <label>Ausnahme-Rollen</label>
+      <div data-discord-select data-type="roles" data-name="exempt_role_ids" data-multiple="true"></div>
+    </div>
+    <div class="form-row" style="grid-column:1/-1"><button class="btn btn-primary" type="submit">Hinzufügen</button></div>
+  </form>
+</div>
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Pattern</th><th>Match</th><th>Strafen</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for w in words %}
+        <tr>
+          <td><code>{{ w.pattern }}</code></td>
+          <td>{{ w.match_type }}</td>
+          <td>
+            {% if w.delete_message %}del {% endif %}
+            {% if w.warn_user %}warn {% endif %}
+            {% if w.timeout_seconds %}timeout({{ w.timeout_seconds }}) {% endif %}
+            {% if w.kick %}kick {% endif %}
+            {% if w.ban %}ban{% endif %}
+          </td>
+          <td>{% if w.enabled %}<span class="badge ok">an</span>{% else %}<span class="badge">aus</span>{% endif %}</td>
+          <td class="actions">
+            <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="form_action" value="toggle"><input type="hidden" name="id" value="{{ w.id }}"><button class="btn btn-ghost btn-sm" type="submit">Toggle</button></form>
+            <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="form_action" value="delete"><input type="hidden" name="id" value="{{ w.id }}"><button class="btn btn-danger btn-sm" type="submit">×</button></form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="5" class="empty">Keine Filter.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

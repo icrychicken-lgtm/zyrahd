@@ -1,0 +1,28 @@
+{% extends "partials/shell.html" %}
+{% block title %}Server-Status · zyrahd.net{% endblock %}
+{% block page_title %}Server-Status{% endblock %}
+{% block content %}
+<form method="post" class="panel">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label class="checkbox"><input type="checkbox" name="enabled" {% if cfg.enabled %}checked{% endif %}> Aktiv</label>
+  <label class="checkbox"><input type="checkbox" name="maintenance" {% if cfg.maintenance %}checked{% endif %}> Wartungsmodus</label>
+  <div class="form-grid">
+    <div class="form-row"><label>Name</label><input name="server_name" value="{{ cfg.server_name }}"></div>
+    <div class="form-row"><label>Typ</label>
+      <select name="server_type"><option value="minecraft" {% if cfg.server_type=='minecraft' %}selected{% endif %}>Minecraft</option>
+      <option value="fivem" {% if cfg.server_type=='fivem' %}selected{% endif %}>FiveM</option></select>
+    </div>
+    <div class="form-row"><label>IP / API-Endpoint</label><input name="endpoint" value="{{ cfg.endpoint }}" placeholder="play.example.com oder https://…"></div>
+    <div class="form-row"><label>Intervall (Sek.)</label><input type="number" name="interval_seconds" value="{{ cfg.interval_seconds }}"></div>
+    <div class="form-row">
+      <label>Statuskanal</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="channel_id" data-multiple="false"
+           data-selected='{{ cfg.channel_id or "" }}'></div>
+    </div>
+    <div class="form-row"><label>Online-Nachricht</label><input name="online_message" value="{{ cfg.online_message }}"></div>
+    <div class="form-row"><label>Offline-Nachricht</label><input name="offline_message" value="{{ cfg.offline_message }}"></div>
+  </div>
+  <p class="help">Aktuell: {{ cfg.last_status }} · {{ cfg.last_players }}/{{ cfg.last_max_players }} · Ping {{ cfg.last_ping }}ms</p>
+  <button class="btn btn-primary" type="submit">Speichern</button>
+</form>
+{% endblock %}

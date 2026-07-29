@@ -1,0 +1,28 @@
+{% extends "partials/base.html" %}
+{% block body %}
+<div class="app-shell">
+  {% include "partials/sidebar.html" %}
+  <div class="main">
+    <div class="topbar">
+      <div class="page-title">
+        <button class="btn btn-ghost btn-sm mobile-toggle" data-toggle-sidebar type="button">☰</button>
+        <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+        <p>{% block page_subtitle %}{% endblock %}</p>
+      </div>
+      <div class="user-chip">
+        {% if current_user %}
+          <img src="{{ current_user.avatar_url }}" alt="">
+          <div class="meta">
+            <strong>{{ current_user.username }}</strong>
+            <span>
+              <span class="status-dot {% if bot_status.ready %}on{% endif %}"></span>
+              {% if bot_status.ready %}Bot online · {{ bot_status.latency }}ms{% else %}Bot offline{% endif %}
+            </span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% block content %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

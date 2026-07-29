@@ -1,0 +1,45 @@
+{% extends "partials/shell.html" %}
+{% block title %}Verify · zyrahd.net{% endblock %}
+{% block page_title %}Verify-System{% endblock %}
+{% block page_subtitle %}Panel veröffentlichen – kein Slash-Command nötig{% endblock %}
+{% block content %}
+<form method="post" class="panel">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label class="checkbox"><input type="checkbox" name="enabled" {% if cfg.enabled %}checked{% endif %}> Aktiv</label>
+  <div class="form-grid">
+    <div class="form-row">
+      <label>Verifizierungskanal</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="channel_id" data-multiple="false"
+           data-selected='{{ cfg.channel_id or "" }}'></div>
+    </div>
+    <div class="form-row">
+      <label>Verifizierungsrolle</label>
+      <div data-discord-select data-type="roles" data-name="verified_role_id" data-multiple="false"
+           data-selected='{{ cfg.verified_role_id or "" }}'></div>
+    </div>
+    <div class="form-row">
+      <label>Rollen entfernen bei Verify</label>
+      <div data-discord-select data-type="roles" data-name="remove_role_ids" data-multiple="true"
+           data-selected='{{ cfg.get_remove_roles()|tojson }}'></div>
+    </div>
+    <div class="form-row">
+      <label>Log-Kanal</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="log_channel_id" data-multiple="false"
+           data-selected='{{ cfg.log_channel_id or "" }}'></div>
+    </div>
+    <div class="form-row"><label>Titel</label><input name="title" value="{{ cfg.title }}"></div>
+    <div class="form-row"><label>Button-Text</label><input name="button_label" value="{{ cfg.button_label }}"></div>
+    <div class="form-row" style="grid-column:1/-1"><label>Beschreibung</label><textarea name="description">{{ cfg.description }}</textarea></div>
+    <div class="form-row"><label>Farbe</label><input type="color" name="color" value="{{ cfg.color }}"></div>
+    <div class="form-row"><label>Mindestalter (Tage)</label><input type="number" name="min_account_age_days" value="{{ cfg.min_account_age_days }}"></div>
+    <div class="form-row"><label class="checkbox"><input type="checkbox" name="captcha_enabled" {% if cfg.captcha_enabled %}checked{% endif %}> Captcha</label>
+      <label class="checkbox"><input type="checkbox" name="dm_enabled" {% if cfg.dm_enabled %}checked{% endif %}> DM nach Verify</label>
+    </div>
+    <div class="form-row" style="grid-column:1/-1"><label>DM-Nachricht</label><textarea name="dm_message">{{ cfg.dm_message }}</textarea></div>
+  </div>
+  <div class="actions">
+    <button class="btn btn-ghost" type="submit" name="publish" value="0">Speichern</button>
+    <button class="btn btn-primary" type="submit" name="publish" value="1">Panel veröffentlichen</button>
+  </div>
+</form>
+{% endblock %}

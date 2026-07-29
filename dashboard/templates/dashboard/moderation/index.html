@@ -1,0 +1,56 @@
+{% extends "partials/shell.html" %}
+{% block title %}Moderation · zyrahd.net{% endblock %}
+{% block page_title %}Moderation{% endblock %}
+{% block page_subtitle %}Fälle, Verwarnungen und Sanktionen{% endblock %}
+{% block content %}
+<div class="grid grid-3" style="margin-bottom:18px">
+  <div class="stat"><div class="label">Fälle gesamt</div><div class="value">{{ stats.total }}</div></div>
+  <div class="stat"><div class="label">Aktive Warns</div><div class="value">{{ stats.warns }}</div></div>
+  <div class="stat"><div class="label">Aktive Bans</div><div class="value">{{ stats.bans }}</div></div>
+</div>
+<div class="panel" style="margin-bottom:18px">
+  <div class="actions">
+    <a class="btn btn-primary" href="{{ url_for('moderation.create') }}">Sanktion erstellen</a>
+  </div>
+  <form method="get" class="form-grid" style="margin-top:14px">
+    <div class="form-row"><label>Suche</label><input name="q" value="{{ request.args.get('q','') }}" placeholder="Name oder ID"></div>
+    <div class="form-row"><label>Aktion</label>
+      <select name="action"><option value="">Alle</option>
+        {% for a in ['warn','timeout','kick','ban','tempban','unban'] %}
+          <option value="{{ a }}" {% if request.args.get('action')==a %}selected{% endif %}>{{ a }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row" style="display:flex;align-items:end"><button class="btn btn-ghost" type="submit">Filtern</button></div>
+  </form>
+</div>
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Aktion</th><th>Benutzer</th><th>Moderator</th><th>Grund</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {% for c in cases %}
+        <tr>
+          <td>#{{ c.case_number }}</td>
+          <td><span class="badge">{{ c.action }}</span></td>
+          <td>{{ c.user_name }}</td>
+          <td>{{ c.moderator_name }}</td>
+          <td>{{ c.reason }}</td>
+          <td>{{ c.status }}</td>
+          <td>
+            {% if c.status == 'active' %}
+            <form method="post" action="{{ url_for('moderation.revoke', case_id=c.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-ghost btn-sm" type="submit">Aufheben</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="7" class="empty">Keine Fälle.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

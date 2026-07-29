@@ -1,0 +1,21 @@
+{% extends "partials/shell.html" %}
+{% block title %}Sanktion · zyrahd.net{% endblock %}
+{% block page_title %}Sanktion erstellen{% endblock %}
+{% block content %}
+<form method="post" class="panel" style="max-width:640px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="form-row"><label>Aktion</label>
+    <select name="action" required>
+      {% for a in ['warn','timeout','untimeout','kick','ban','tempban','unban','nickname'] %}
+        <option value="{{ a }}">{{ a }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="form-row"><label>Discord User-ID</label><input name="user_id" required placeholder="z.B. 1234567890"></div>
+  <div class="form-row"><label>Grund</label><textarea name="reason" required></textarea></div>
+  <div class="form-row"><label>Dauer (Sekunden, für Timeout/Tempban)</label><input type="number" name="duration_seconds" value="600"></div>
+  <div class="form-row"><label>Beweise (Links)</label><input name="evidence"></div>
+  <div class="form-row"><label>Nickname (nur bei nickname)</label><input name="nickname"></div>
+  <button class="btn btn-primary" type="submit">Ausführen</button>
+</form>
+{% endblock %}

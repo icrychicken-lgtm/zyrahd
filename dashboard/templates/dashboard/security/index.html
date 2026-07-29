@@ -1,0 +1,87 @@
+{% extends "partials/shell.html" %}
+{% block title %}Sicherheit · zyrahd.net{% endblock %}
+{% block page_title %}Automod & Sicherheit{% endblock %}
+{% block page_subtitle %}Anti-Spam, Raid-Schutz und Eskalation{% endblock %}
+{% block content %}
+<div class="panel" style="margin-bottom:18px">
+  <div class="panel-header">
+    <h2>Notfallmodus</h2>
+    {% if cfg.emergency_mode %}<span class="badge danger">AKTIV</span>{% else %}<span class="badge ok">aus</span>{% endif %}
+  </div>
+  <form method="post" action="{{ url_for('security.emergency') }}" class="actions">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if cfg.emergency_mode %}
+      <button class="btn btn-success" name="enable" value="0" type="submit">Notfallmodus deaktivieren</button>
+    {% else %}
+      <button class="btn btn-danger" name="enable" value="1" type="submit">Notfallmodus aktivieren</button>
+    {% endif %}
+  </form>
+</div>
+
+<form method="post" class="panel" style="margin-bottom:18px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="grid grid-3">
+    {% for key, label in [
+      ('anti_spam','Anti-Spam'),('anti_link','Anti-Link'),('anti_invite','Anti-Invites'),
+      ('anti_mention_spam','Anti-Mention-Spam'),('anti_caps','Anti-Caps'),('anti_zalgo','Anti-Zalgo'),
+      ('anti_duplicate','Anti-Duplicate'),('anti_mass_emoji','Anti-Mass-Emoji'),('anti_raid','Anti-Raid'),
+      ('anti_bot_join','Anti-Bot-Join'),('raid_lock_channels','Raid: Kanäle sperren')
+    ] %}
+      <label class="checkbox"><input type="checkbox" name="{{ key }}" {% if cfg|attr(key) %}checked{% endif %}> {{ label }}</label>
+    {% endfor %}
+  </div>
+  <div class="divider"></div>
+  <div class="form-grid">
+    <div class="form-row"><label>Min. Account-Alter (Tage)</label><input type="number" name="min_account_age_days" value="{{ cfg.min_account_age_days }}"></div>
+    <div class="form-row"><label>Raid Join-Schwellwert</label><input type="number" name="raid_join_threshold" value="{{ cfg.raid_join_threshold }}"></div>
+    <div class="form-row"><label>Raid Zeitfenster (Sek.)</label><input type="number" name="raid_join_window_seconds" value="{{ cfg.raid_join_window_seconds }}"></div>
+    <div class="form-row"><label>Raid Timeout (Sek.)</label><input type="number" name="raid_timeout_seconds" value="{{ cfg.raid_timeout_seconds }}"></div>
+    <div class="form-row"><label>Spam Nachrichten</label><input type="number" name="spam_messages" value="{{ cfg.spam_messages }}"></div>
+    <div class="form-row"><label>Spam Sekunden</label><input type="number" name="spam_seconds" value="{{ cfg.spam_seconds }}"></div>
+    <div class="form-row"><label>Mention-Limit</label><input type="number" name="mention_limit" value="{{ cfg.mention_limit }}"></div>
+    <div class="form-row"><label>Caps %</label><input type="number" name="caps_percent" value="{{ cfg.caps_percent }}"></div>
+    <div class="form-row"><label>Emoji-Limit</label><input type="number" name="emoji_limit" value="{{ cfg.emoji_limit }}"></div>
+    <div class="form-row">
+      <label>Log-Kanal</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="log_channel_id" data-multiple="false"
+           data-selected='{{ cfg.log_channel_id or "" }}'></div>
+    </div>
+    <div class="form-row">
+      <label>Ausnahme-Rollen</label>
+      <div data-discord-select data-type="roles" data-name="exempt_role_ids" data-multiple="true"
+           data-selected='{{ cfg.get_exempt_roles()|tojson }}'></div>
+    </div>
+    <div class="form-row">
+      <label>Ausnahme-Kanäle</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement,voice" data-name="exempt_channel_ids" data-multiple="true"
+           data-selected='{{ cfg.get_exempt_channels()|tojson }}'></div>
+    </div>
+    <div class="form-row"><label>User-Whitelist (IDs, Komma)</label><input name="whitelist_user_ids" value="{{ cfg.get_whitelist_users()|join(', ') }}"></div>
+    <div class="form-row"><label>Link-Whitelist (Domains, Komma)</label><input name="link_whitelist" value="{{ cfg.get_link_whitelist()|join(', ') }}"></div>
+  </div>
+  <button class="btn btn-primary" type="submit">Speichern</button>
+</form>
+
+<div class="panel">
+  <div class="panel-header"><h2>Letzte Sicherheitsereignisse</h2>
+    <a class="btn btn-ghost btn-sm" href="{{ url_for('security.words') }}">Wortfilter</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Zeit</th><th>Typ</th><th>User</th><th>Details</th></tr></thead>
+      <tbody>
+      {% for e in events %}
+        <tr>
+          <td>{{ e.created_at.strftime('%d.%m %H:%M') if e.created_at else '' }}</td>
+          <td><span class="badge">{{ e.event_type }}</span></td>
+          <td>{{ e.username or '—' }}</td>
+          <td>{{ e.details }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="empty">Keine Events.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

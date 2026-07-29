@@ -1,0 +1,12 @@
+{% extends "partials/base.html" %}
+{% block title %}404 · zyrahd.net{% endblock %}
+{% block body %}
+<section class="landing">
+  <div class="landing-card">
+    <div class="brand-mark">Z</div>
+    <h1>Nicht gefunden</h1>
+    <p class="tagline">Diese Seite existiert nicht.</p>
+    <a class="btn btn-primary" href="{{ url_for('main.landing') }}">Zur Startseite</a>
+  </div>
+</section>
+{% endblock %}

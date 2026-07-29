@@ -1,0 +1,44 @@
+{% extends "partials/shell.html" %}
+{% block title %}Meine Tickets · zyrahd.net{% endblock %}
+{% block page_title %}Meine Tickets{% endblock %}
+{% block page_subtitle %}Deine Anfragen im Überblick{% endblock %}
+{% block content %}
+<div class="panel" style="margin-bottom:18px">
+  <div class="panel-header">
+    <h2>Schnellstart</h2>
+    <a class="btn btn-primary" href="{{ url_for('tickets.create') }}">🎫 Neues Ticket erstellen</a>
+  </div>
+  <p class="help">Erstelle Support-, Bewerbungs- oder Partnerschaftstickets direkt hier – der Discord-Kanal wird automatisch angelegt.</p>
+</div>
+
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Art</th>
+          <th>Status</th>
+          <th>Priorität</th>
+          <th>Erstellt</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for t in tickets %}
+        <tr>
+          <td>#{{ t.ticket_number }}</td>
+          <td>{{ t.ticket_type.emoji if t.ticket_type else '' }} {{ t.ticket_type.name if t.ticket_type else '—' }}</td>
+          <td><span class="badge {% if t.status == 'open' %}ok{% elif t.status == 'closed' %}danger{% else %}warn{% endif %}">{{ t.status }}</span></td>
+          <td>{{ t.priority }}</td>
+          <td>{{ t.created_at.strftime('%d.%m.%Y %H:%M') if t.created_at else '—' }}</td>
+          <td><a class="btn btn-ghost btn-sm" href="{{ url_for('tickets.detail', ticket_id=t.id) }}">Öffnen</a></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="empty">Du hast noch keine Tickets.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

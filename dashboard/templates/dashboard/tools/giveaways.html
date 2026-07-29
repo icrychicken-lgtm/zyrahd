@@ -1,0 +1,46 @@
+{% extends "partials/shell.html" %}
+{% block title %}Giveaways · zyrahd.net{% endblock %}
+{% block page_title %}Giveaways{% endblock %}
+{% block content %}
+<div class="panel" style="margin-bottom:18px">
+  <form method="post" class="form-grid">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-row"><label>Preis</label><input name="prize" required></div>
+    <div class="form-row"><label>Dauer (Minuten)</label><input type="number" name="minutes" value="60"></div>
+    <div class="form-row"><label>Gewinner</label><input type="number" name="winners" value="1"></div>
+    <div class="form-row">
+      <label>Kanal</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="channel_id" data-multiple="false"></div>
+    </div>
+    <div class="form-row">
+      <label>Benötigte Rollen</label>
+      <div data-discord-select data-type="roles" data-name="required_role_ids" data-multiple="true"></div>
+    </div>
+    <div class="form-row">
+      <label>Verbotene Rollen</label>
+      <div data-discord-select data-type="roles" data-name="forbidden_role_ids" data-multiple="true"></div>
+    </div>
+    <div class="form-row"><button class="btn btn-primary" type="submit">Speichern</button></div>
+  </form>
+  <p class="help">Zum Live-Posten zusätzlich /giveaway im Discord nutzen.</p>
+</div>
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Preis</th><th>Endet</th><th>Status</th><th>Gewinner</th></tr></thead>
+      <tbody>
+      {% for g in items %}
+        <tr>
+          <td>{{ g.prize }}</td>
+          <td>{{ g.ends_at.strftime('%d.%m.%Y %H:%M') if g.ends_at else '' }}</td>
+          <td><span class="badge">{{ g.status }}</span></td>
+          <td class="help">{{ g.winner_ids }}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="4" class="empty">Keine Giveaways.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,168 @@
+{% extends "partials/shell.html" %}
+{% block title %}Dashboard · zyrahd.net{% endblock %}
+{% block page_title %}Willkommen zurück{% endblock %}
+{% block page_subtitle %}{{ stats.guild_name }} · Live-Übersicht{% endblock %}
+{% block content %}
+<div class="grid grid-4" style="margin-bottom:18px">
+  <div class="stat">
+    <div class="label">Mitglieder</div>
+    <div class="value">{{ stats.members }}</div>
+    <div class="hint">{{ stats.online }} online</div>
+  </div>
+  <div class="stat">
+    <div class="label">Offene Tickets</div>
+    <div class="value">{{ stats.open_tickets }}</div>
+    <div class="hint">heute: {{ stats.tickets_today }}</div>
+  </div>
+  <div class="stat">
+    <div class="label">Ø Antwortzeit</div>
+    <div class="value" style="font-size:1.4rem">{{ stats.avg_response }}</div>
+    <div class="hint">basierend auf Übernahmen</div>
+  </div>
+  <div class="stat">
+    <div class="label">Sicherheit heute</div>
+    <div class="value">{{ stats.security_today }}</div>
+    <div class="hint">Sanktionen: {{ stats.mods_today }}</div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Aktivität (7 Tage)</h2>
+    </div>
+    <div class="chart-box">
+      <canvas id="activityChart"></canvas>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Server</h2>
+      <span class="badge {% if stats.bot_ready %}ok{% else %}danger{% endif %}">
+        {% if stats.bot_ready %}Bot online{% else %}Bot offline{% endif %}
+      </span>
+    </div>
+    <div style="display:flex;gap:14px;align-items:center;margin-bottom:16px">
+      {% if stats.guild_icon %}
+        <img src="{{ stats.guild_icon }}" alt="" style="width:56px;height:56px;border-radius:16px;border:2px solid rgba(192,132,252,.4)">
+      {% else %}
+        <div class="brand-mark" style="width:56px;height:56px;font-size:20px;margin:0">Z</div>
+      {% endif %}
+      <div>
+        <strong style="font-size:1.15rem">{{ stats.guild_name }}</strong>
+        <div class="help">Latenz {{ stats.latency }} ms</div>
+      </div>
+    </div>
+    {% if server_status and server_status.enabled %}
+      <div class="divider"></div>
+      <div class="help">Game-Server</div>
+      <strong>{{ server_status.server_name or 'Server' }}</strong>
+      <div style="margin-top:8px">
+        <span class="badge {% if server_status.last_status == 'online' %}ok{% else %}danger{% endif %}">
+          {{ server_status.last_status or 'unknown' }}
+        </span>
+        <span class="help" style="margin-left:8px">
+          {{ server_status.last_players }}/{{ server_status.last_max_players }} Spieler
+        </span>
+      </div>
+    {% endif %}
+    <div class="divider"></div>
+    <div class="actions">
+      <a class="btn btn-primary btn-sm" href="{{ url_for('tickets.create') }}">🎫 Neues Ticket</a>
+      {% if can('tickets.view') %}
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('tickets.overview') }}">Tickets</a>
+      {% endif %}
+      {% if can('security.manage') %}
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('security.index') }}">Sicherheit</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-top:18px">
+  <div class="panel">
+    <div class="panel-header"><h2>Letzte Aktivitäten</h2></div>
+    {% if activities %}
+      <div class="table-wrap">
+        <table>
+          <tbody>
+          {% for a in activities %}
+            <tr>
+              <td><span class="badge">{{ a.kind }}</span></td>
+              <td>{{ a.message }}</td>
+              <td class="help">{{ a.created_at.strftime('%d.%m %H:%M') if a.created_at else '' }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">Noch keine Aktivitäten.</div>
+    {% endif %}
+  </div>
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Audit</h2>
+      {% if can('audit.view') %}<a class="btn btn-ghost btn-sm" href="{{ url_for('main.audit') }}">Alle</a>{% endif %}
+    </div>
+    {% if audits %}
+      <div class="table-wrap">
+        <table>
+          <tbody>
+          {% for a in audits %}
+            <tr>
+              <td><strong>{{ a.username }}</strong></td>
+              <td>{{ a.action }}</td>
+              <td class="help">{{ a.created_at.strftime('%d.%m %H:%M') if a.created_at else '' }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty">Noch keine Audit-Einträge.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const ctx = document.getElementById('activityChart');
+if (ctx) {
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: {{ chart_labels|tojson }},
+      datasets: [
+        {
+          label: 'Tickets',
+          data: {{ chart_tickets|tojson }},
+          borderColor: '#c084fc',
+          backgroundColor: 'rgba(192,132,252,0.15)',
+          fill: true,
+          tension: 0.35,
+        },
+        {
+          label: 'Joins',
+          data: {{ chart_joins|tojson }},
+          borderColor: '#f472b6',
+          backgroundColor: 'rgba(244,114,182,0.08)',
+          fill: true,
+          tension: 0.35,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#a89bc4' } } },
+      scales: {
+        x: { ticks: { color: '#6f5f8d' }, grid: { color: 'rgba(167,139,250,0.08)' } },
+        y: { ticks: { color: '#6f5f8d' }, grid: { color: 'rgba(167,139,250,0.08)' }, beginAtZero: true }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

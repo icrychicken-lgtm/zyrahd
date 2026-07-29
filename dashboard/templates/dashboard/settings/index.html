@@ -1,0 +1,28 @@
+{% extends "partials/shell.html" %}
+{% block title %}Einstellungen · zyrahd.net{% endblock %}
+{% block page_title %}Einstellungen{% endblock %}
+{% block page_subtitle %}Server-Konfiguration über das Dashboard{% endblock %}
+{% block content %}
+<div class="grid grid-3">
+  <a class="panel" href="{{ url_for('settings.welcome') }}" style="display:block;color:inherit">
+    <h3>Willkommen / Abschied</h3>
+    <p class="help">Kanäle, Rollen, Embeds und DMs</p>
+  </a>
+  <a class="panel" href="{{ url_for('settings.verify') }}" style="display:block;color:inherit">
+    <h3>Verify</h3>
+    <p class="help">Verifizierungspanel und Rollen</p>
+  </a>
+  <a class="panel" href="{{ url_for('settings.permissions') }}" style="display:block;color:inherit">
+    <h3>Dashboard-Rechte</h3>
+    <p class="help">Discord-Rollen Berechtigungen zuweisen</p>
+  </a>
+  <a class="panel" href="{{ url_for('settings.logs') }}" style="display:block;color:inherit">
+    <h3>Logging</h3>
+    <p class="help">Log-Kanäle pro Event-Typ</p>
+  </a>
+  <a class="panel" href="{{ url_for('settings.team_roles') }}" style="display:block;color:inherit">
+    <h3>Team-Rollen</h3>
+    <p class="help">Support, Mod, Leitung, Admin</p>
+  </a>
+</div>
+{% endblock %}

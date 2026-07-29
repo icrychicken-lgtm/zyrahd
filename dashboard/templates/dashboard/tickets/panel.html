@@ -1,0 +1,32 @@
+{% extends "partials/shell.html" %}
+{% block title %}Ticket-Panel · zyrahd.net{% endblock %}
+{% block page_title %}Ticket-Panel{% endblock %}
+{% block page_subtitle %}Panel im Discord-Kanal veröffentlichen{% endblock %}
+{% block content %}
+<div class="grid grid-2">
+  <form method="post" class="panel">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-row"><label>Titel</label><input name="title" value="{{ panel.title }}"></div>
+    <div class="form-row"><label>Beschreibung</label><textarea name="description">{{ panel.description }}</textarea></div>
+    <div class="form-row"><label>Farbe</label><input type="color" name="color" value="{{ panel.color }}"></div>
+    <div class="form-row"><label>Button-Text</label><input name="button_label" value="{{ panel.button_label }}"></div>
+    <div class="form-row">
+      <label>Kanal</label>
+      <div data-discord-select data-type="channels" data-channel-type="text,announcement" data-name="channel_id" data-multiple="false"
+           data-selected='{{ panel.channel_id or "" }}' data-placeholder="Kanal suchen…"></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ghost" type="submit" name="publish" value="0">Speichern</button>
+      <button class="btn btn-primary" type="submit" name="publish" value="1">Veröffentlichen</button>
+    </div>
+  </form>
+  <div class="panel">
+    <div class="panel-header"><h2>Live-Vorschau</h2></div>
+    <div class="embed-preview" style="border-left-color: {{ panel.color }}">
+      <div class="title">{{ panel.title }}</div>
+      <div class="desc">{{ panel.description }}</div>
+      <div style="margin-top:14px"><span class="btn btn-primary btn-sm">{{ panel.button_label }}</span></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

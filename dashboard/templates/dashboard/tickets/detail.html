@@ -1,0 +1,125 @@
+{% extends "partials/shell.html" %}
+{% block title %}Ticket #{{ ticket.ticket_number }} · zyrahd.net{% endblock %}
+{% block page_title %}Ticket #{{ ticket.ticket_number }}{% endblock %}
+{% block page_subtitle %}{{ ticket.title or (ticket.ticket_type.name if ticket.ticket_type else 'Ticket') }}{% endblock %}
+{% block content %}
+<div class="grid grid-2">
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Verlauf</h2>
+      <span class="badge">{{ ticket.status }}</span>
+    </div>
+    <div class="chat">
+      {% for m in messages %}
+        <div class="msg {% if m.is_system %}system{% endif %}">
+          {% if m.author_avatar %}
+            <img src="{{ m.author_avatar }}" alt="">
+          {% else %}
+            <div class="brand-mark" style="width:42px;height:42px;font-size:14px;margin:0;border-radius:50%">Z</div>
+          {% endif %}
+          <div>
+            <div class="head">
+              <strong>{{ m.author_name }}</strong>
+              <span>{{ m.source }} · {{ m.created_at.strftime('%d.%m.%Y %H:%M') if m.created_at else '' }}</span>
+            </div>
+            <div class="body">{{ m.content }}</div>
+          </div>
+        </div>
+      {% else %}
+        <div class="empty">Noch keine Nachrichten.</div>
+      {% endfor %}
+    </div>
+    {% if ticket.status not in ['archived'] %}
+    <form method="post" action="{{ url_for('tickets.send_message', ticket_id=ticket.id) }}" style="margin-top:16px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <textarea name="content" placeholder="Nachricht schreiben…" required></textarea>
+      <div class="actions" style="margin-top:10px">
+        <button class="btn btn-primary" type="submit">Senden</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <div class="panel-header"><h2>Details</h2></div>
+    <p><strong>Ersteller:</strong> {{ ticket.opener_name }}</p>
+    <p><strong>Priorität:</strong> {{ ticket.priority }}</p>
+    <p><strong>Übernommen:</strong> {{ ticket.claimed_by_name or '—' }}</p>
+    {% if ticket.channel_id %}<p><strong>Kanal-ID:</strong> <code>{{ ticket.channel_id }}</code></p>{% endif %}
+    <div class="divider"></div>
+    <h3>Formular</h3>
+    {% for k,v in ticket.get_form_data().items() %}
+      <p><strong>{{ k }}</strong><br>{{ v }}</p>
+    {% else %}
+      <p class="help">Keine Formulardaten.</p>
+    {% endfor %}
+
+    {% if is_staff %}
+    <div class="divider"></div>
+    <h3>Aktionen</h3>
+    <div class="actions">
+      <form method="post" action="{{ url_for('tickets.action', ticket_id=ticket.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="claim">
+        <button class="btn btn-success btn-sm" type="submit">Übernehmen</button>
+      </form>
+      <form method="post" action="{{ url_for('tickets.action', ticket_id=ticket.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="unclaim">
+        <button class="btn btn-ghost btn-sm" type="submit">Übernahme aufheben</button>
+      </form>
+      <form method="post" action="{{ url_for('tickets.action', ticket_id=ticket.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="reopen">
+        <button class="btn btn-ghost btn-sm" type="submit">Wieder öffnen</button>
+      </form>
+    </div>
+    <form method="post" action="{{ url_for('tickets.action', ticket_id=ticket.id) }}" style="margin-top:12px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="close">
+      <label>Schließgrund</label>
+      <input type="text" name="reason" placeholder="Grund…">
+      <button class="btn btn-danger btn-sm" style="margin-top:8px" type="submit">Schließen</button>
+    </form>
+    <form method="post" action="{{ url_for('tickets.action', ticket_id=ticket.id) }}" style="margin-top:12px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="priority">
+      <label>Priorität</label>
+      <select name="priority">
+        {% for p in ['low','normal','high','urgent'] %}
+          <option value="{{ p }}" {% if ticket.priority==p %}selected{% endif %}>{{ p }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" type="submit">Speichern</button>
+    </form>
+    <form method="post" action="{{ url_for('tickets.action', ticket_id=ticket.id) }}" style="margin-top:12px">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="note">
+      <label>Interne Notiz</label>
+      <textarea name="note"></textarea>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" type="submit">Notiz speichern</button>
+    </form>
+    {% if can('tickets.delete') %}
+    <form method="post" action="{{ url_for('tickets.action', ticket_id=ticket.id) }}" style="margin-top:12px" onsubmit="return confirm('Ticket wirklich löschen?')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="delete">
+      <button class="btn btn-danger btn-sm" type="submit">Löschen / Archivieren</button>
+    </form>
+    {% endif %}
+    {% endif %}
+
+    {% if ticket.status == 'closed' and not ticket.rating %}
+    <div class="divider"></div>
+    <form method="post" action="{{ url_for('tickets.action', ticket_id=ticket.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="rate">
+      <label>Bewertung (1-5)</label>
+      <input type="number" name="rating" min="1" max="5" required>
+      <label>Kommentar</label>
+      <input type="text" name="rating_comment">
+      <button class="btn btn-primary btn-sm" style="margin-top:8px" type="submit">Bewerten</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

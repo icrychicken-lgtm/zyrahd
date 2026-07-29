@@ -1,0 +1,29 @@
+{% extends "partials/shell.html" %}
+{% block title %}Neues Ticket · zyrahd.net{% endblock %}
+{% block page_title %}Neues Ticket erstellen{% endblock %}
+{% block page_subtitle %}Wähle eine Kategorie und fülle das Formular aus{% endblock %}
+{% block content %}
+<script type="application/json" id="ticket-types-json">{{ types|tojson }}</script>
+<form method="post" class="panel">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="ticket_type_id" id="ticket_type_id" value="{{ selected_id or '' }}" required>
+
+  <h3 style="margin-top:0">Ticket-Art</h3>
+  <div class="grid grid-3" style="margin-bottom:20px">
+    {% for t in types %}
+      <div class="ticket-type-card {% if selected_id == t.id %}selected{% endif %}" data-ticket-type="{{ t.id }}" style="border-color: {{ t.color }}55">
+        <div style="font-size:1.4rem">{{ t.emoji }}</div>
+        <strong>{{ t.name }}</strong>
+        <div class="help">{{ t.description }}</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <div id="dynamic-fields"></div>
+
+  <div class="actions" style="margin-top:16px">
+    <button class="btn btn-primary" type="submit">Ticket erstellen</button>
+    <a class="btn btn-ghost" href="{{ url_for('tickets.mine') }}">Abbrechen</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "partials/shell.html" %}
+{% block title %}Statistik-Kanäle · zyrahd.net{% endblock %}
+{% block page_title %}Statistik-Kanäle{% endblock %}
+{% block content %}
+<form method="post" class="panel">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for key, label in types %}
+    {% set row = rows.get(key) %}
+    <div class="form-grid" style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(167,139,250,.1)">
+      <div class="form-row"><strong>{{ label }}</strong>
+        <label class="checkbox"><input type="checkbox" name="enabled_{{ key }}" {% if row and row.enabled %}checked{% endif %}> Aktiv</label>
+      </div>
+      <div class="form-row">
+        <label>Kanal</label>
+        <div data-discord-select data-type="channels" data-channel-type="voice,text" data-name="channel_{{ key }}" data-multiple="false"
+             data-selected='{{ row.channel_id if row and row.channel_id else "" }}'></div>
+      </div>
+      <div class="form-row"><label>Format</label><input name="format_{{ key }}" value="{{ row.name_format if row else label ~ ': {value}' }}"></div>
+    </div>
+  {% endfor %}
+  <button class="btn btn-primary" type="submit">Speichern</button>
+</form>
+{% endblock %}

@@ -1,0 +1,51 @@
+{% extends "partials/shell.html" %}
+{% block title %}Berechtigungen · zyrahd.net{% endblock %}
+{% block page_title %}Dashboard-Berechtigungen{% endblock %}
+{% block page_subtitle %}Discord-Rollen bestimmten Bereichen zuordnen{% endblock %}
+{% block content %}
+<div class="panel" style="margin-bottom:18px">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="form_action" value="save">
+    <div class="form-grid">
+      <div class="form-row">
+        <label>Discord-Rolle</label>
+        <div data-discord-select data-type="roles" data-name="role_id" data-multiple="false" data-placeholder="Rolle wählen…"></div>
+      </div>
+      <div class="form-row"><label>Anzeigename (optional)</label><input name="role_name" placeholder="z.B. Support"></div>
+    </div>
+    <div class="grid grid-3" style="margin:14px 0">
+      {% for key, label in all_permissions %}
+        <label class="checkbox"><input type="checkbox" name="permissions" value="{{ key }}"> {{ label }}</label>
+      {% endfor %}
+    </div>
+    <button class="btn btn-primary" type="submit">Speichern</button>
+  </form>
+</div>
+
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Rolle</th><th>Rechte</th><th></th></tr></thead>
+      <tbody>
+      {% for row in rows %}
+        <tr>
+          <td>{{ row.role_name or row.role_id }} <span class="help">{{ row.role_id }}</span></td>
+          <td>{% for p in row.get_permissions() %}<span class="badge" style="margin:2px">{{ p }}</span>{% endfor %}</td>
+          <td>
+            <form method="post">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="form_action" value="delete">
+              <input type="hidden" name="role_id" value="{{ row.role_id }}">
+              <button class="btn btn-danger btn-sm" type="submit">Entfernen</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="3" class="empty">Noch keine Zuordnungen. Initial-Admins aus der .env haben vollen Zugriff.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

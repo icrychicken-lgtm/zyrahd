@@ -1,0 +1,13 @@
+{% extends "partials/shell.html" %}
+{% block title %}Tools · zyrahd.net{% endblock %}
+{% block page_title %}Server-Tools{% endblock %}
+{% block content %}
+<div class="grid grid-3">
+  <a class="panel" href="{{ url_for('tools.status') }}" style="display:block;color:inherit"><h3>Server-Status</h3><p class="help">Minecraft / FiveM Überwachung</p></a>
+  <a class="panel" href="{{ url_for('tools.stats') }}" style="display:block;color:inherit"><h3>Statistik-Kanäle</h3><p class="help">Mitglieder, Tickets, Boosts…</p></a>
+  <a class="panel" href="{{ url_for('tools.tempvoice') }}" style="display:block;color:inherit"><h3>Temp-Voice</h3><p class="help">Temporäre Sprachkanäle</p></a>
+  <a class="panel" href="{{ url_for('tools.suggestions') }}" style="display:block;color:inherit"><h3>Vorschläge</h3><p class="help">Voting & Status</p></a>
+  <a class="panel" href="{{ url_for('tools.giveaways') }}" style="display:block;color:inherit"><h3>Giveaways</h3><p class="help">Gewinne verwalten</p></a>
+  <a class="panel" href="{{ url_for('tools.reaction_roles') }}" style="display:block;color:inherit"><h3>Reaction Roles</h3><p class="help">Rollen-Panels</p></a>
+</div>
+{% endblock %}

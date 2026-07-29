@@ -1,0 +1,70 @@
+{% extends "partials/shell.html" %}
+{% block title %}Tickets · zyrahd.net{% endblock %}
+{% block page_title %}Ticket-Übersicht{% endblock %}
+{% block page_subtitle %}Alle Server-Tickets filtern und verwalten{% endblock %}
+{% block content %}
+<div class="panel" style="margin-bottom:18px">
+  <form method="get" class="form-grid">
+    <div class="form-row">
+      <label>Status</label>
+      <select name="status">
+        <option value="">Alle</option>
+        {% for s in ['open','claimed','waiting','closed','archived'] %}
+          <option value="{{ s }}" {% if request.args.get('status')==s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Art</label>
+      <select name="type">
+        <option value="">Alle</option>
+        {% for t in types %}
+          <option value="{{ t.id }}" {% if request.args.get('type')==t.id|string %}selected{% endif %}>{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Suche</label>
+      <input type="text" name="q" value="{{ request.args.get('q','') }}" placeholder="Benutzer, Titel…">
+    </div>
+    <div class="form-row" style="display:flex;align-items:end">
+      <button class="btn btn-primary" type="submit">Filtern</button>
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Art</th>
+          <th>Benutzer</th>
+          <th>Status</th>
+          <th>Priorität</th>
+          <th>Claim</th>
+          <th>Erstellt</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for t in tickets %}
+        <tr>
+          <td>#{{ t.ticket_number }}</td>
+          <td>{{ t.ticket_type.name if t.ticket_type else '—' }}</td>
+          <td>{{ t.opener_name }}</td>
+          <td><span class="badge">{{ t.status }}</span></td>
+          <td>{{ t.priority }}</td>
+          <td>{{ t.claimed_by_name or '—' }}</td>
+          <td>{{ t.created_at.strftime('%d.%m %H:%M') if t.created_at else '—' }}</td>
+          <td><a class="btn btn-ghost btn-sm" href="{{ url_for('tickets.detail', ticket_id=t.id) }}">Öffnen</a></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="empty">Keine Tickets gefunden.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
