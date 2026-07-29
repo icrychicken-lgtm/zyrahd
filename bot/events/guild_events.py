@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import re
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
-from string import Template
 
 import discord
 from discord.ext import commands
@@ -25,7 +23,9 @@ def _render(text: str, member: discord.Member) -> str:
         "server": member.guild.name,
         "member_count": str(member.guild.member_count or 0),
         "created_at": discord.utils.format_dt(member.created_at, "D"),
-        "joined_at": discord.utils.format_dt(member.joined_at or datetime.now(UTC), "D"),
+        "joined_at": discord.utils.format_dt(
+            member.joined_at or datetime.now(UTC), "D"
+        ),
     }
     for key, value in values.items():
         text = text.replace("{" + key + "}", value)
@@ -109,9 +109,7 @@ class GuildEvents(commands.Cog):
         if config.get("enabled") and isinstance(channel, discord.TextChannel):
             await channel.send(
                 _render(
-                    config.get(
-                        "message", "**{display_name}** hat {server} verlassen."
-                    ),
+                    config.get("message", "**{display_name}** hat {server} verlassen."),
                     member,
                 )
             )
@@ -158,7 +156,9 @@ class GuildEvents(commands.Cog):
                     )
                 )
             )
-        ignored_channels = {str(item) for item in security.get("ignored_channel_ids", [])}
+        ignored_channels = {
+            str(item) for item in security.get("ignored_channel_ids", [])
+        }
         ignored_roles = {str(item) for item in security.get("ignored_role_ids", [])}
         if str(message.channel.id) in ignored_channels or any(
             str(role.id) in ignored_roles for role in message.author.roles
@@ -179,7 +179,9 @@ class GuildEvents(commands.Cog):
                 if not matched and len(_normalized(phrase)) >= 4:
                     matched = _normalized(phrase) in normalized_content
             if matched:
-                await self._punish(message, item.action, item.timeout_minutes, item.response)
+                await self._punish(
+                    message, item.action, item.timeout_minutes, item.response
+                )
                 return
 
         if security.get("anti_spam_enabled"):

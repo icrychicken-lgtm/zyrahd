@@ -46,7 +46,9 @@ def _bot_health() -> dict:
 
 @main.get("/")
 def index():
-    return redirect(url_for("main.dashboard") if current_user() else url_for("auth.login"))
+    return redirect(
+        url_for("main.dashboard") if current_user() else url_for("auth.login")
+    )
 
 
 @main.get("/dashboard")

@@ -31,7 +31,7 @@
         <span class="nav-icon">◈</span> Meine Tickets
       </a>
 
-      {% if current_permissions & {'tickets.manage', 'moderation.execute', 'security.manage'} %}
+      {% if 'tickets.manage' in current_permissions or 'moderation.execute' in current_permissions or 'security.manage' in current_permissions %}
       <span class="nav-label">Verwaltung</span>
       {% if 'tickets.manage' in current_permissions %}
       <a href="{{ url_for('main.ticket_settings') }}" class="{{ 'active' if request.endpoint == 'main.ticket_settings' }}">
@@ -50,7 +50,7 @@
       {% endif %}
       {% endif %}
 
-      {% if current_permissions & {'embeds.send', 'team.manage', 'server.manage'} %}
+      {% if 'embeds.send' in current_permissions or 'team.manage' in current_permissions or 'server.manage' in current_permissions %}
       <span class="nav-label">Server</span>
       {% if 'embeds.send' in current_permissions %}
       <a href="{{ url_for('main.embed_designer') }}" class="{{ 'active' if request.endpoint == 'main.embed_designer' }}">
@@ -69,7 +69,7 @@
       {% endif %}
       {% endif %}
 
-      {% if current_permissions & {'roles.manage', 'audit.view'} %}
+      {% if 'roles.manage' in current_permissions or 'audit.view' in current_permissions %}
       <span class="nav-label">Administration</span>
       {% if 'roles.manage' in current_permissions %}
       <a href="{{ url_for('main.dashboard_roles') }}" class="{{ 'active' if request.endpoint == 'main.dashboard_roles' }}">

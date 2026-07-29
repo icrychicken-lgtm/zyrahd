@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import discord
 from discord import app_commands
@@ -69,7 +69,9 @@ class ModerationCog(commands.Cog, name="ModerationCog"):
             f"✅ {member.mention} wurde verwarnt · Fall **#{number}**"
         )
 
-    @app_commands.command(name="warnings", description="Zeige Verwarnungen eines Mitglieds")
+    @app_commands.command(
+        name="warnings", description="Zeige Verwarnungen eines Mitglieds"
+    )
     @app_commands.checks.has_permissions(moderate_members=True)
     async def warnings(
         self, interaction: discord.Interaction, member: discord.Member
@@ -120,7 +122,9 @@ class ModerationCog(commands.Cog, name="ModerationCog"):
             f"✅ Verwarnung **#{fallnummer}** wurde aufgehoben."
         )
 
-    @app_commands.command(name="timeout", description="Gib einem Mitglied einen Timeout")
+    @app_commands.command(
+        name="timeout", description="Gib einem Mitglied einen Timeout"
+    )
     @app_commands.checks.has_permissions(moderate_members=True)
     async def timeout(
         self,
@@ -145,7 +149,10 @@ class ModerationCog(commands.Cog, name="ModerationCog"):
     @app_commands.command(name="untimeout", description="Entferne einen Timeout")
     @app_commands.checks.has_permissions(moderate_members=True)
     async def untimeout(
-        self, interaction: discord.Interaction, member: discord.Member, reason: str = "Aufgehoben"
+        self,
+        interaction: discord.Interaction,
+        member: discord.Member,
+        reason: str = "Aufgehoben",
     ) -> None:
         await member.timeout(None, reason=reason)
         number = create_case(
@@ -184,7 +191,10 @@ class ModerationCog(commands.Cog, name="ModerationCog"):
     @app_commands.command(name="unban", description="Hebe einen Ban per Discord-ID auf")
     @app_commands.checks.has_permissions(ban_members=True)
     async def unban(
-        self, interaction: discord.Interaction, benutzer_id: str, reason: str = "Aufgehoben"
+        self,
+        interaction: discord.Interaction,
+        benutzer_id: str,
+        reason: str = "Aufgehoben",
     ) -> None:
         if not benutzer_id.isdigit():
             await interaction.response.send_message(
@@ -200,7 +210,9 @@ class ModerationCog(commands.Cog, name="ModerationCog"):
             f"✅ Ban für {user} aufgehoben · Fall **#{number}**"
         )
 
-    @app_commands.command(name="clear", description="Lösche Nachrichten im aktuellen Kanal")
+    @app_commands.command(
+        name="clear", description="Lösche Nachrichten im aktuellen Kanal"
+    )
     @app_commands.checks.has_permissions(manage_messages=True)
     async def clear(
         self,
@@ -209,7 +221,9 @@ class ModerationCog(commands.Cog, name="ModerationCog"):
     ) -> None:
         await interaction.response.defer(ephemeral=True)
         if not isinstance(interaction.channel, discord.TextChannel):
-            await interaction.followup.send("Dieser Kanal wird nicht unterstützt.", ephemeral=True)
+            await interaction.followup.send(
+                "Dieser Kanal wird nicht unterstützt.", ephemeral=True
+            )
             return
         deleted = await interaction.channel.purge(limit=anzahl)
         await interaction.followup.send(
@@ -246,7 +260,9 @@ class ModerationCog(commands.Cog, name="ModerationCog"):
         )
         await interaction.response.send_message("🔓 Kanal entsperrt.")
 
-    @app_commands.command(name="nickname", description="Ändere den Nickname eines Mitglieds")
+    @app_commands.command(
+        name="nickname", description="Ändere den Nickname eines Mitglieds"
+    )
     @app_commands.checks.has_permissions(manage_nicknames=True)
     async def nickname(
         self, interaction: discord.Interaction, member: discord.Member, nickname: str
@@ -267,7 +283,9 @@ class ModerationCog(commands.Cog, name="ModerationCog"):
                 )
             )
         if not item:
-            await interaction.response.send_message("Fall nicht gefunden.", ephemeral=True)
+            await interaction.response.send_message(
+                "Fall nicht gefunden.", ephemeral=True
+            )
             return
         embed = discord.Embed(
             title=f"Moderationsfall #{item.case_number}",

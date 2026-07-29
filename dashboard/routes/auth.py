@@ -30,13 +30,24 @@ def _safe_next(value: str | None) -> str:
 def login():
     if current_user():
         return redirect(url_for("main.dashboard"))
+    return render_template(
+        "login.html",
+        configuration_error=(
+            None
+            if settings.oauth_ready
+            else "Discord OAuth2 ist in der .env noch nicht vollständig konfiguriert."
+        ),
+        next_url=_safe_next(request.args.get("next")),
+    )
+
+
+@auth.get("/login/discord")
+@limiter.limit("20 per hour")
+def discord_login():
+    if current_user():
+        return redirect(url_for("main.dashboard"))
     if not settings.oauth_ready:
-        return render_template(
-            "login.html",
-            configuration_error=(
-                "Discord OAuth2 ist in der .env noch nicht vollständig konfiguriert."
-            ),
-        )
+        return redirect(url_for("auth.login"))
     state = secrets.token_urlsafe(32)
     session["oauth_state"] = state
     session["login_next"] = _safe_next(request.args.get("next"))
@@ -58,7 +69,9 @@ def login():
 def callback():
     expected_state = session.pop("oauth_state", None)
     supplied_state = request.args.get("state")
-    if not expected_state or not secrets.compare_digest(expected_state, supplied_state or ""):
+    if not expected_state or not secrets.compare_digest(
+        expected_state, supplied_state or ""
+    ):
         flash("Die Anmeldung ist abgelaufen. Bitte versuche es erneut.", "error")
         return redirect(url_for("auth.login"))
     if request.args.get("error"):
@@ -80,7 +93,9 @@ def callback():
         token_response.raise_for_status()
         access_token = token_response.json()["access_token"]
         headers = {"Authorization": f"Bearer {access_token}"}
-        user_response = requests.get(f"{DISCORD_API}/users/@me", headers=headers, timeout=10)
+        user_response = requests.get(
+            f"{DISCORD_API}/users/@me", headers=headers, timeout=10
+        )
         member_response = requests.get(
             f"{DISCORD_API}/users/@me/guilds/{settings.guild_id}/member",
             headers=headers,

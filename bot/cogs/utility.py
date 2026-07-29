@@ -32,9 +32,7 @@ class VerifyView(discord.ui.View):
         with session_scope() as session:
             config = get_setting(session, str(interaction.guild.id), "verify", {})
         role_id = str(config.get("role_id") or "")
-        role = (
-            interaction.guild.get_role(int(role_id)) if role_id.isdigit() else None
-        )
+        role = interaction.guild.get_role(int(role_id)) if role_id.isdigit() else None
         if not role:
             await interaction.response.send_message(
                 "Das Verify-System wurde noch nicht vollständig eingerichtet.",
@@ -66,7 +64,8 @@ class VerifyView(discord.ui.View):
                 *remove_roles, reason="Zyrahd Verifizierung"
             )
         await interaction.response.send_message(
-            f"✅ Du wurdest erfolgreich als **{role.name}** verifiziert.", ephemeral=True
+            f"✅ Du wurdest erfolgreich als **{role.name}** verifiziert.",
+            ephemeral=True,
         )
         if config.get("send_dm"):
             try:

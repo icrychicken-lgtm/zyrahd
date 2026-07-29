@@ -16,15 +16,15 @@ from dashboard.decorators import current_user, permissions_for
 from database.manager import db_session
 
 csrf = CSRFProtect()
-limiter = Limiter(key_func=get_remote_address, default_limits=["300 per hour"])
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["300 per hour"],
+    storage_uri="memory://",
+)
 
 
 def create_dashboard() -> Flask:
-    app = Flask(
-        "zyrahd-dashboard",
-        template_folder="templates",
-        static_folder="static",
-    )
+    app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.update(
         SECRET_KEY=settings.flask_secret_key,
         MAX_CONTENT_LENGTH=8 * 1024 * 1024,
@@ -63,7 +63,9 @@ def create_dashboard() -> Flask:
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Permissions-Policy"] = (
+            "camera=(), microphone=(), geolocation=()"
+        )
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "script-src 'self'; "
@@ -78,8 +80,12 @@ def create_dashboard() -> Flask:
     @app.errorhandler(CSRFError)
     def csrf_error(error: CSRFError):
         if request.path.startswith("/api/"):
-            return jsonify(error="Sicherheits-Token abgelaufen. Lade die Seite neu."), 400
-        return render_template("errors/error.html", code=400, message=error.description), 400
+            return jsonify(
+                error="Sicherheits-Token abgelaufen. Lade die Seite neu."
+            ), 400
+        return render_template(
+            "errors/error.html", code=400, message=error.description
+        ), 400
 
     @app.errorhandler(403)
     def forbidden(_error):
@@ -122,7 +128,9 @@ def create_dashboard() -> Flask:
 
     @app.errorhandler(500)
     def server_error(error):
-        logging.getLogger("zyrahd.dashboard").exception("Dashboard-Fehler", exc_info=error)
+        logging.getLogger("zyrahd.dashboard").exception(
+            "Dashboard-Fehler", exc_info=error
+        )
         if request.path.startswith("/api/"):
             return jsonify(error="Unerwarteter Serverfehler."), 500
         return (

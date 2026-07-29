@@ -270,8 +270,10 @@ def _save_ticket_type(type_id: int | None):
         if not 1 <= len(str(field.get("label", "")).strip()) <= 45:
             return jsonify(error="Jedes Feld benötigt einen kurzen Namen."), 400
     with session_scope() as db:
-        item = db.get(TicketType, type_id) if type_id else TicketType(
-            guild_id=str(settings.guild_id)
+        item = (
+            db.get(TicketType, type_id)
+            if type_id
+            else TicketType(guild_id=str(settings.guild_id))
         )
         if not item or item.guild_id != str(settings.guild_id):
             abort(404)
@@ -288,9 +290,7 @@ def _save_ticket_type(type_id: int | None):
             str(data.get("transcript_channel_id") or "") or None
         )
         item.max_open = max(1, min(int(data.get("max_open", 1)), 20))
-        item.cooldown_minutes = max(
-            0, min(int(data.get("cooldown_minutes", 5)), 10080)
-        )
+        item.cooldown_minutes = max(0, min(int(data.get("cooldown_minutes", 5)), 10080))
         item.welcome_message = str(data.get("welcome_message", ""))[:2000]
         item.enabled = bool(data.get("enabled", True))
         if not type_id:
@@ -407,6 +407,13 @@ def ticket_status(ticket_id: int):
         )
         if not is_owner_close:
             _require("tickets.manage")
+    body, internal_status = _internal(
+        "PUT", f"/tickets/{ticket_id}/status", {"status": status}
+    )
+    if internal_status >= 300:
+        return jsonify(body), internal_status
+    with session_scope() as db:
+        ticket = db.get(Ticket, ticket_id)
         old = ticket.status
         ticket.status = status
         ticket.closed_at = datetime.now(UTC) if status == "closed" else None
@@ -530,9 +537,7 @@ def team_announcement():
     content = str(data.get("content", "")).strip()
     if not title or not content:
         return jsonify(error="Titel und Nachricht werden benötigt."), 400
-    _validate_resource_ids(
-        data, {"channel_id": "text_any", "target_role_ids": "role"}
-    )
+    _validate_resource_ids(data, {"channel_id": "text_any", "target_role_ids": "role"})
     with session_scope() as db:
         item = TeamAnnouncement(
             guild_id=str(settings.guild_id),
@@ -583,9 +588,7 @@ def save_dashboard_role(role_id: str):
     _require("roles.manage")
     data = _json()
     _validate_resource_ids({"role_id": role_id}, {"role_id": "role"})
-    granted = {
-        item for item in data.get("permissions", []) if item in ALL_PERMISSIONS
-    }
+    granted = {item for item in data.get("permissions", []) if item in ALL_PERMISSIONS}
     with session_scope() as db:
         mapping = db.scalar(
             select(DashboardRole).where(

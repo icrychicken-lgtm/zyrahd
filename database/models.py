@@ -5,7 +5,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -18,7 +26,9 @@ class Base(DeclarativeBase):
 
 
 class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
@@ -66,8 +76,10 @@ class TicketType(Base, TimestampMixin):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     position: Mapped[int] = mapped_column(Integer, default=0)
 
-    fields: Mapped[list["TicketFormField"]] = relationship(
-        back_populates="ticket_type", cascade="all, delete-orphan", order_by="TicketFormField.position"
+    fields: Mapped[list[TicketFormField]] = relationship(
+        back_populates="ticket_type",
+        cascade="all, delete-orphan",
+        order_by="TicketFormField.position",
     )
 
 
@@ -107,8 +119,10 @@ class Ticket(Base, TimestampMixin):
     rating: Mapped[int | None] = mapped_column(Integer)
 
     ticket_type: Mapped[TicketType] = relationship()
-    messages: Mapped[list["TicketMessage"]] = relationship(
-        back_populates="ticket", cascade="all, delete-orphan", order_by="TicketMessage.created_at"
+    messages: Mapped[list[TicketMessage]] = relationship(
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+        order_by="TicketMessage.created_at",
     )
 
 
@@ -125,7 +139,9 @@ class TicketMessage(Base):
     attachment_url: Mapped[str | None] = mapped_column(Text)
     message_id: Mapped[str | None] = mapped_column(String(24))
     system_event: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
     ticket: Mapped[Ticket] = relationship(back_populates="messages")
 
@@ -188,7 +204,9 @@ class AuditLog(Base):
     old_value: Mapped[str | None] = mapped_column(Text)
     new_value: Mapped[str | None] = mapped_column(Text)
     ip_address: Mapped[str | None] = mapped_column(String(64))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
 
 MODEL_TYPES: tuple[type[Any], ...] = (

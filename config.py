@@ -33,7 +33,9 @@ def _ids(name: str) -> frozenset[int]:
             try:
                 values.add(int(raw))
             except ValueError as exc:
-                raise RuntimeError(f"{name} enthält eine ungültige Discord-ID.") from exc
+                raise RuntimeError(
+                    f"{name} enthält eine ungültige Discord-ID."
+                ) from exc
     return frozenset(values)
 
 
@@ -81,7 +83,9 @@ class Settings:
         if not os.getenv("FLASK_SECRET_KEY"):
             warnings.append("FLASK_SECRET_KEY fehlt; Sessions verfallen beim Neustart.")
         if not self.internal_api_secret:
-            warnings.append("INTERNAL_API_SECRET fehlt; interne API-Aktionen sind gesperrt.")
+            warnings.append(
+                "INTERNAL_API_SECRET fehlt; interne API-Aktionen sind gesperrt."
+            )
         return warnings
 
 

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Any, Iterator
+from typing import Any
 
 from sqlalchemy import create_engine, event, select
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
@@ -90,9 +91,7 @@ def init_database() -> None:
             session.add(ticket_type)
 
 
-def get_setting(
-    session: Session, guild_id: str, key: str, default: Any = None
-) -> Any:
+def get_setting(session: Session, guild_id: str, key: str, default: Any = None) -> Any:
     row = session.scalar(
         select(GuildSetting).where(
             GuildSetting.guild_id == guild_id, GuildSetting.key == key

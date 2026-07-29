@@ -33,7 +33,7 @@
       {% if configuration_error %}
       <div class="alert error">{{ configuration_error }}</div>
       {% else %}
-      <a href="{{ url_for('auth.login') }}" class="button button-discord button-large">
+      <a href="{{ url_for('auth.discord_login', next=next_url) }}" class="button button-discord button-large">
         <span>◈</span> Mit Discord anmelden <b>→</b>
       </a>
       {% endif %}

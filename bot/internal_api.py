@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import hmac
-import json
+from collections.abc import Awaitable
 from datetime import UTC, datetime, timedelta
-from typing import Any, Awaitable
+from typing import Any
 
 import discord
 from flask import Flask, jsonify, request
-from sqlalchemy import select
 
 from bot.cogs.tickets import TicketPanel
 from bot.cogs.utility import VerifyView
@@ -68,7 +67,9 @@ def create_internal_app(bot: discord.Client) -> Flask:
                 "name": role.name,
                 "color": str(role.color),
                 "position": role.position,
-                "usable": not role.managed and role < top_role and not role.is_default(),
+                "usable": not role.managed
+                and role < top_role
+                and not role.is_default(),
             }
             for role in reversed(current.roles)
             if not role.is_default()
@@ -141,7 +142,9 @@ def create_internal_app(bot: discord.Client) -> Flask:
             )
         except (RuntimeError, ValueError, TimeoutError) as exc:
             return jsonify(error=str(exc)), 400
-        return jsonify(id=ticket.id, number=ticket.number, channel_id=ticket.channel_id), 201
+        return jsonify(
+            id=ticket.id, number=ticket.number, channel_id=ticket.channel_id
+        ), 201
 
     @app.post("/tickets/<int:ticket_id>/messages")
     def send_ticket_message(ticket_id: int) -> tuple[Any, int]:
@@ -158,18 +161,18 @@ def create_internal_app(bot: discord.Client) -> Flask:
         async def send() -> discord.Message:
             channel = bot.get_channel(channel_id)
             if not isinstance(channel, discord.TextChannel):
-                raise ValueError("Der Discord-Kanal wurde nicht gefunden.")
+                raise TypeError("Der Discord-Kanal wurde nicht gefunden.")
             embed = discord.Embed(
                 description=content,
                 color=0x8B5CF6,
                 timestamp=datetime.now(UTC),
             )
-            embed.set_author(name=f"{str(data.get('author_name', 'Dashboard'))} · Web")
+            embed.set_author(name=f"{data.get('author_name', 'Dashboard')!s} · Web")
             return await channel.send(embed=embed)
 
         try:
             message = run(send())
-        except (RuntimeError, ValueError, TimeoutError) as exc:
+        except (RuntimeError, TypeError, ValueError, TimeoutError) as exc:
             return jsonify(error=str(exc)), 503
         with session_scope() as session:
             session.add(
@@ -185,12 +188,58 @@ def create_internal_app(bot: discord.Client) -> Flask:
             )
         return jsonify(ok=True, message_id=str(message.id)), 201
 
+    @app.put("/tickets/<int:ticket_id>/status")
+    def update_ticket_status(ticket_id: int) -> tuple[Any, int]:
+        data = request.get_json(silent=True) or {}
+        status = str(data.get("status", ""))
+        if status not in {"open", "claimed", "waiting", "closed", "archived"}:
+            return jsonify(error="Ungültiger Ticket-Status."), 400
+        with session_scope() as session:
+            ticket = session.get(Ticket, ticket_id)
+            if not ticket or not ticket.channel_id:
+                return jsonify(error="Ticket-Kanal wurde nicht gefunden."), 404
+            channel_id = int(ticket.channel_id)
+            creator_id = int(ticket.creator_id)
+
+        async def update_channel() -> None:
+            current = guild()
+            channel = bot.get_channel(channel_id)
+            if not current or not isinstance(channel, discord.TextChannel):
+                raise TypeError("Der Discord-Kanal wurde nicht gefunden.")
+            creator = current.get_member(creator_id)
+            if creator:
+                overwrite = channel.overwrites_for(creator)
+                overwrite.send_messages = status not in {"closed", "archived"}
+                await channel.set_permissions(creator, overwrite=overwrite)
+            name = channel.name
+            if status in {"closed", "archived"} and not name.startswith("closed-"):
+                name = f"closed-{name}"[:100]
+            elif status not in {"closed", "archived"} and name.startswith("closed-"):
+                name = name.removeprefix("closed-")
+            if name != channel.name:
+                await channel.edit(name=name)
+            await channel.send(
+                f"✦ Ticket-Status wurde über das Dashboard auf **{status}** gesetzt."
+            )
+
+        try:
+            run(update_channel())
+        except (discord.HTTPException, RuntimeError, TypeError, TimeoutError) as exc:
+            return jsonify(
+                error=f"Discord-Status konnte nicht aktualisiert werden: {exc}"
+            ), 503
+        return jsonify(ok=True), 200
+
     @app.post("/publish/<panel>")
     def publish_panel(panel: str) -> tuple[Any, int]:
         data = request.get_json(silent=True) or {}
         channel_id = str(data.get("channel_id", ""))
         current = guild()
-        channel = current.get_channel(int(channel_id)) if current and channel_id.isdigit() else None
+        channel = (
+            current.get_channel(int(channel_id))
+            if current and channel_id.isdigit()
+            else None
+        )
         if not isinstance(channel, discord.TextChannel):
             return jsonify(error="Bitte wähle einen gültigen Textkanal."), 400
         if panel == "ticket":
@@ -222,7 +271,9 @@ def create_internal_app(bot: discord.Client) -> Flask:
         try:
             message = run(channel.send(embed=embed, view=view))
         except (discord.HTTPException, RuntimeError, TimeoutError) as exc:
-            return jsonify(error=f"Panel konnte nicht veröffentlicht werden: {exc}"), 503
+            return jsonify(
+                error=f"Panel konnte nicht veröffentlicht werden: {exc}"
+            ), 503
         return jsonify(ok=True, message_id=str(message.id)), 201
 
     @app.post("/embeds")
@@ -230,7 +281,11 @@ def create_internal_app(bot: discord.Client) -> Flask:
         data = request.get_json(silent=True) or {}
         channel_id = str(data.get("channel_id", ""))
         current = guild()
-        channel = current.get_channel(int(channel_id)) if current and channel_id.isdigit() else None
+        channel = (
+            current.get_channel(int(channel_id))
+            if current and channel_id.isdigit()
+            else None
+        )
         if not isinstance(channel, discord.TextChannel):
             return jsonify(error="Bitte wähle einen Textkanal."), 400
         try:
@@ -274,7 +329,9 @@ def create_internal_app(bot: discord.Client) -> Flask:
         data = request.get_json(silent=True) or {}
         current = guild()
         user_id = str(data.get("user_id", ""))
-        member = current.get_member(int(user_id)) if current and user_id.isdigit() else None
+        member = (
+            current.get_member(int(user_id)) if current and user_id.isdigit() else None
+        )
         if not member:
             return jsonify(error="Mitglied wurde nicht gefunden."), 404
         action = str(data.get("action", ""))

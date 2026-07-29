@@ -23,7 +23,7 @@ def _safe_channel_name(value: str) -> str:
 
 
 class TicketForm(discord.ui.Modal):
-    def __init__(self, cog: "TicketCog", ticket_type: TicketType) -> None:
+    def __init__(self, cog: TicketCog, ticket_type: TicketType) -> None:
         super().__init__(title=ticket_type.name[:45], timeout=600)
         self.cog = cog
         self.ticket_type_id = ticket_type.id
@@ -77,7 +77,7 @@ class TicketForm(discord.ui.Modal):
 
 
 class TicketTypeSelect(discord.ui.Select):
-    def __init__(self, cog: "TicketCog", ticket_types: list[TicketType]) -> None:
+    def __init__(self, cog: TicketCog, ticket_types: list[TicketType]) -> None:
         self.cog = cog
         options = [
             discord.SelectOption(
@@ -100,7 +100,9 @@ class TicketTypeSelect(discord.ui.Select):
             ticket_type = session.scalar(
                 select(TicketType)
                 .options(selectinload(TicketType.fields))
-                .where(TicketType.id == int(self.values[0]), TicketType.enabled.is_(True))
+                .where(
+                    TicketType.id == int(self.values[0]), TicketType.enabled.is_(True)
+                )
             )
         if not ticket_type:
             await interaction.response.send_message(
@@ -111,7 +113,7 @@ class TicketTypeSelect(discord.ui.Select):
 
 
 class TicketTypeView(discord.ui.View):
-    def __init__(self, cog: "TicketCog", ticket_types: list[TicketType]) -> None:
+    def __init__(self, cog: TicketCog, ticket_types: list[TicketType]) -> None:
         super().__init__(timeout=600)
         self.add_item(TicketTypeSelect(cog, ticket_types))
 
@@ -169,7 +171,26 @@ class TicketControls(discord.ui.View):
                     "Dieses Ticket ist bereits geschlossen.", ephemeral=True
                 )
                 return
-            if ticket.claimed_by_id and ticket.claimed_by_id != str(interaction.user.id):
+            ticket_type = session.get(TicketType, ticket.ticket_type_id)
+            support_role_ids = set(
+                json.loads(ticket_type.support_role_ids or "[]") if ticket_type else []
+            )
+            member_role_ids = {
+                str(role.id) for role in getattr(interaction.user, "roles", [])
+            }
+            guild_permissions = getattr(interaction.user, "guild_permissions", None)
+            can_claim = bool(
+                getattr(guild_permissions, "manage_channels", False)
+                or support_role_ids.intersection(member_role_ids)
+            )
+            if not can_claim:
+                await interaction.response.send_message(
+                    "Nur das zuständige Team kann Tickets übernehmen.", ephemeral=True
+                )
+                return
+            if ticket.claimed_by_id and ticket.claimed_by_id != str(
+                interaction.user.id
+            ):
                 await interaction.response.send_message(
                     f"Das Ticket wurde bereits von {ticket.claimed_by_name} übernommen.",
                     ephemeral=True,
@@ -215,6 +236,7 @@ class TicketControls(discord.ui.View):
             ticket.status = "closed"
             ticket.closed_at = datetime.now(UTC)
             ticket.close_reason = "Über Discord geschlossen"
+            creator_id = int(ticket.creator_id)
             session.add(
                 TicketMessage(
                     ticket_id=ticket.id,
@@ -226,10 +248,14 @@ class TicketControls(discord.ui.View):
                 )
             )
         if isinstance(interaction.channel, discord.TextChannel):
-            await interaction.channel.set_permissions(
-                interaction.user, send_messages=False
+            creator = interaction.guild.get_member(creator_id)
+            if creator:
+                overwrite = interaction.channel.overwrites_for(creator)
+                overwrite.send_messages = False
+                await interaction.channel.set_permissions(creator, overwrite=overwrite)
+            await interaction.channel.edit(
+                name=f"closed-{interaction.channel.name}"[:100]
             )
-            await interaction.channel.edit(name=f"closed-{interaction.channel.name}"[:100])
         await interaction.response.send_message(
             f"🔒 Ticket geschlossen von {interaction.user.mention}."
         )
@@ -301,7 +327,9 @@ class TicketCog(commands.Cog, name="TicketCog"):
             ephemeral=True,
         )
 
-    @app_commands.command(name="ticket", description="Erstelle ein privates Support-Ticket")
+    @app_commands.command(
+        name="ticket", description="Erstelle ein privates Support-Ticket"
+    )
     async def ticket(self, interaction: discord.Interaction) -> None:
         await self.show_ticket_types(interaction)
 
@@ -311,7 +339,11 @@ class TicketCog(commands.Cog, name="TicketCog"):
         ticket_type_id: int,
         form_data: dict[str, str],
     ) -> Ticket:
-        guild = self.bot.get_guild(getattr(member, "guild", None).id) if isinstance(member, discord.Member) else None
+        guild = (
+            self.bot.get_guild(getattr(member, "guild", None).id)
+            if isinstance(member, discord.Member)
+            else None
+        )
         if guild is None:
             guild = next(
                 (item for item in self.bot.guilds if item.get_member(member.id)), None
@@ -327,6 +359,34 @@ class TicketCog(commands.Cog, name="TicketCog"):
                 or ticket_type.guild_id != str(guild.id)
             ):
                 raise ValueError("Diese Ticket-Art ist nicht verfügbar.")
+            validated_form: dict[str, str] = {}
+            if ticket_type.fields:
+                for field in ticket_type.fields:
+                    answer = str(form_data.get(str(field.id), "")).strip()
+                    if field.required and not answer:
+                        raise ValueError(f"„{field.label}“ ist ein Pflichtfeld.")
+                    if answer and len(answer) < field.min_length:
+                        raise ValueError(
+                            f"„{field.label}“ benötigt mindestens "
+                            f"{field.min_length} Zeichen."
+                        )
+                    if len(answer) > field.max_length:
+                        raise ValueError(
+                            f"„{field.label}“ erlaubt maximal "
+                            f"{field.max_length} Zeichen."
+                        )
+                    if answer:
+                        validated_form[str(field.id)] = answer
+            else:
+                answer = str(
+                    form_data.get("0")
+                    or form_data.get("question")
+                    or next(iter(form_data.values()), "")
+                ).strip()
+                if len(answer) < 5:
+                    raise ValueError("Bitte beschreibe dein Anliegen genauer.")
+                validated_form["0"] = answer[:1000]
+            form_data = validated_form
             open_count = session.scalar(
                 select(func.count(Ticket.id)).where(
                     Ticket.creator_id == str(member.id),
@@ -354,7 +414,9 @@ class TicketCog(commands.Cog, name="TicketCog"):
                 if created > datetime.now(UTC) - timedelta(
                     minutes=ticket_type.cooldown_minutes
                 ):
-                    raise ValueError("Bitte warte noch, bevor du ein weiteres Ticket erstellst.")
+                    raise ValueError(
+                        "Bitte warte noch, bevor du ein weiteres Ticket erstellst."
+                    )
             number = (
                 session.scalar(
                     select(func.max(Ticket.number)).where(
