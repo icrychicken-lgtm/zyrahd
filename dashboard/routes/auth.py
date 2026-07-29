@@ -11,7 +11,6 @@ from flask import Blueprint, abort, flash, redirect, request, session, url_for
 from bot import runtime
 from config import settings
 
-
 bp = Blueprint("auth", __name__)
 DISCORD_API = "https://discord.com/api/v10"
 

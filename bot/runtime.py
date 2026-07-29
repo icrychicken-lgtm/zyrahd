@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Coroutine
 from concurrent.futures import Future
-from typing import Any, Coroutine
-
+from typing import Any
 
 _bot: Any = None
 _loop: asyncio.AbstractEventLoop | None = None

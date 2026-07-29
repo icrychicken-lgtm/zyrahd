@@ -19,7 +19,6 @@ from dashboard.api.routes import bp as api_bp
 from dashboard.routes.auth import bp as auth_bp
 from dashboard.routes.main import bp as main_bp
 
-
 log = logging.getLogger("zyrahd.dashboard")
 csrf = CSRFProtect()
 

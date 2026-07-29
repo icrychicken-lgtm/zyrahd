@@ -11,7 +11,6 @@ from sqlalchemy import Column, Integer, MetaData, Table, insert, select
 from database.manager import engine
 from database.models import Base
 
-
 metadata = MetaData()
 schema_version = Table(
     "schema_version",

@@ -228,7 +228,9 @@ async def send_web_message(
         channel_id = int(ticket.discord_channel_id)
     channel = bot.get_channel(channel_id)
     if not isinstance(channel, discord.TextChannel):
-        raise ValueError("Der Ticket-Kanal wurde gelöscht oder ist nicht erreichbar.")
+        raise ValueError(  # noqa: TRY004
+            "Der Ticket-Kanal wurde gelöscht oder ist nicht erreichbar."
+        )
     embed = discord.Embed(description=content, color=0x7C5CFF)
     embed.set_author(name=f"{author_name} · Web-Dashboard")
     sent = await channel.send(embed=embed)

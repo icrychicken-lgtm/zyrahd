@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, TypeVar
+from typing import Any, TypeVar
 
 from flask import abort, jsonify, request, session
 from sqlalchemy import select
@@ -12,7 +13,6 @@ from bot import runtime
 from config import settings
 from database.manager import session_scope
 from database.models import DashboardRolePermission
-
 
 ALL_PERMISSIONS = {
     "dashboard.open",

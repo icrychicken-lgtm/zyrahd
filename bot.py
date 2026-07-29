@@ -1,5 +1,8 @@
 """Discord bot entry point and the dashboard-to-bot service surface."""
 
+# Import order is intentional: ``__path__`` must exist before modular bot imports.
+# ruff: noqa: I001, TRY004
+
 from __future__ import annotations
 
 import logging

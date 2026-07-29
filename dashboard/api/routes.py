@@ -30,7 +30,6 @@ from database.models import (
     WordFilter,
 )
 
-
 bp = Blueprint("api", __name__, url_prefix="/api")
 EDITABLE_MODULES = {
     "welcome": "server.edit",
@@ -48,7 +47,9 @@ def _user() -> dict[str, Any]:
 def _body() -> dict[str, Any]:
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
-        raise ValueError("Es wurde kein gültiges JSON-Objekt gesendet.")
+        raise ValueError(  # noqa: TRY004
+            "Es wurde kein gültiges JSON-Objekt gesendet."
+        )
     return data
 
 
@@ -399,7 +400,7 @@ def _apply_ticket_type(row: TicketType, data: dict[str, Any]) -> None:
     seen: set[str] = set()
     for index, field in enumerate(fields):
         if not isinstance(field, dict):
-            raise ValueError("Ein Formularfeld ist ungültig.")
+            raise ValueError("Ein Formularfeld ist ungültig.")  # noqa: TRY004
         field_id = str(field.get("id", f"field_{index}")).strip()[:40]
         label = str(field.get("label", "")).strip()[:80]
         if not field_id or field_id in seen or not label:

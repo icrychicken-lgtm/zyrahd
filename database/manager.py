@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
-from typing import Any, Iterator
+from typing import Any
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from config import settings
 from database.models import AuditLog, Base, GuildSetting, JsonMixin, TicketType
-
 
 engine_kwargs: dict[str, Any] = {"pool_pre_ping": True}
 if settings.database_url.startswith("sqlite"):

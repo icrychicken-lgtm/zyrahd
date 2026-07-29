@@ -144,7 +144,7 @@ class Ticket(Base, JsonMixin):
     closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     ticket_type: Mapped[TicketType] = relationship()
-    messages: Mapped[list["TicketMessage"]] = relationship(
+    messages: Mapped[list[TicketMessage]] = relationship(
         back_populates="ticket", cascade="all, delete-orphan"
     )
 

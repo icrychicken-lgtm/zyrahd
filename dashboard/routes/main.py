@@ -8,7 +8,6 @@ from bot import runtime
 from config import settings
 from dashboard.security import current_user, permission_set, require_login
 
-
 bp = Blueprint("main", __name__)
 
 
