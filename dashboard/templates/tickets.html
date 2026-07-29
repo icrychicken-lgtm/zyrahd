@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Tickets{% endblock %}
+{% block page_id %}tickets{% endblock %}
+{% block eyebrow %}Support Center{% endblock %}
+{% block heading %}{{ 'Ticket-Übersicht' if 'tickets.view' in current_permissions else 'Meine Tickets' }}{% endblock %}
+{% block actions %}
+<button class="button button-primary" data-open-dialog="newTicketDialog"><span>＋</span> Neues Ticket</button>
+{% endblock %}
+{% block content %}
+<section class="page-content">
+  <div class="filter-bar glass reveal">
+    <a href="{{ url_for('main.tickets') }}" class="{{ 'active' if not selected_status }}">Alle</a>
+    {% for status, label in [('open','Offen'), ('claimed','Übernommen'), ('waiting','Wartend'), ('closed','Geschlossen'), ('archived','Archiviert')] %}
+    <a href="{{ url_for('main.tickets', status=status) }}" class="{{ 'active' if selected_status == status }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  <div class="ticket-grid stagger">
+    {% for ticket in tickets %}
+    <a href="{{ url_for('main.ticket_detail', ticket_id=ticket.id) }}" class="ticket-card glass">
+      <header>
+        <span class="ticket-symbol">{{ ticket.ticket_type.emoji }}</span>
+        <span class="badge status-{{ ticket.status }}">{{ ticket.status }}</span>
+      </header>
+      <p class="eyebrow">Ticket #{{ ticket.number }}</p>
+      <h3>{{ ticket.ticket_type.name }}</h3>
+      <p>{{ ticket.creator_name }}{% if ticket.claimed_by_name %} · {{ ticket.claimed_by_name }}{% endif %}</p>
+      <footer>
+        <span>{{ ticket.created_at.strftime('%d.%m.%Y') }}</span>
+        <span class="priority priority-{{ ticket.priority }}">{{ ticket.priority }}</span>
+      </footer>
+    </a>
+    {% else %}
+    <div class="empty-state glass full-span">
+      <span class="empty-orbit">◇</span>
+      <h3>Noch keine Tickets</h3>
+      <p>Wenn du Hilfe brauchst, kannst du direkt hier ein privates Ticket erstellen.</p>
+      <button class="button button-primary" data-open-dialog="newTicketDialog">Ticket erstellen</button>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<dialog id="newTicketDialog" class="modal">
+  <form method="dialog" class="modal-shell glass" id="ticketCreateForm">
+    <header class="modal-header">
+      <div><p class="eyebrow">Support Center</p><h2>Neues Ticket</h2></div>
+      <button value="cancel" class="icon-button" aria-label="Schließen">×</button>
+    </header>
+    <div class="modal-body">
+      <div class="step active" data-step="types">
+        <p class="field-hint">Wähle zuerst den passenden Bereich für dein Anliegen.</p>
+        <div class="type-choice-grid">
+          {% for type in ticket_types %}
+          <button type="button" class="type-choice" data-ticket-type="{{ type.id }}" data-ticket-name="{{ type.name }}">
+            <span>{{ type.emoji }}</span><div><strong>{{ type.name }}</strong><small>{{ type.description }}</small></div><b>→</b>
+          </button>
+          <template id="ticketForm-{{ type.id }}">
+            {% for field in type.fields %}
+            <label class="field">
+              <span>{{ field.label }}{% if field.required %} *{% endif %}</span>
+              {% if field.field_type == 'long' %}
+              <textarea data-field-id="{{ field.id }}" placeholder="{{ field.placeholder }}" minlength="{{ field.min_length }}" maxlength="{{ field.max_length }}" {{ 'required' if field.required }}></textarea>
+              {% else %}
+              <input data-field-id="{{ field.id }}" placeholder="{{ field.placeholder }}" minlength="{{ field.min_length }}" maxlength="{{ field.max_length }}" {{ 'required' if field.required }}>
+              {% endif %}
+            </label>
+            {% else %}
+            <label class="field"><span>Wie können wir dir helfen? *</span><textarea data-field-id="question" required maxlength="1000"></textarea></label>
+            {% endfor %}
+          </template>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="step" data-step="form">
+        <button type="button" class="back-link" id="ticketBack">← Bereich ändern</button>
+        <h3 id="ticketFormTitle"></h3>
+        <div id="ticketDynamicFields"></div>
+      </div>
+    </div>
+    <footer class="modal-footer">
+      <button value="cancel" class="button button-ghost">Abbrechen</button>
+      <button type="submit" class="button button-primary hidden" id="ticketSubmit">Ticket erstellen</button>
+    </footer>
+  </form>
+</dialog>
+{% endblock %}

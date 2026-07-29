@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Einstellungen{% endblock %}
+{% block page_id %}settings{% endblock %}
+{% block eyebrow %}Server{% endblock %}
+{% block heading %}Einstellungen{% endblock %}
+{% block content %}
+<section class="page-content settings-layout">
+  <aside class="settings-nav glass reveal">
+    <button class="active" data-settings-tab="welcome"><span>👋</span><div><strong>Willkommen</strong><small>Nachricht & Rollen</small></div></button>
+    <button data-settings-tab="farewell"><span>🌙</span><div><strong>Abschied</strong><small>Leave-Nachricht</small></div></button>
+    <button data-settings-tab="verify"><span>✅</span><div><strong>Verifizierung</strong><small>Rollen & Panel</small></div></button>
+  </aside>
+
+  <div class="settings-content">
+    <form class="settings-section panel glass active reveal" data-section="welcome">
+      <header class="panel-header"><div><p class="eyebrow">Mitglieder</p><h2>Willkommenssystem</h2><p>Begrüße neue Mitglieder automatisch und vergib passende Rollen.</p></div><label class="switch"><input type="checkbox" name="enabled"><span></span></label></header>
+      <div class="form-grid two">
+        <label class="field"><span>Willkommenskanal</span><div class="resource-picker" data-field="channel_id" data-resource="channels" data-types="text,announcement"></div></label>
+        <label class="field"><span>Darstellung</span><select name="mode"><option value="embed">Discord-Embed</option><option value="text">Nur Text</option></select></label>
+        <label class="field"><span>Titel</span><input name="title" maxlength="256" placeholder="Willkommen auf {server}!"></label>
+        <label class="field"><span>Akzentfarbe</span><div class="color-input"><input type="color" name="color" value="#8b5cf6"><input data-color-text value="#8b5cf6" aria-label="Farbwert"></div></label>
+        <label class="field full"><span>Beschreibung</span><textarea name="description" maxlength="2000" rows="5" placeholder="Hey {mention}, willkommen auf **{server}**!"></textarea><small class="field-hint">Platzhalter: {mention}, {display_name}, {server}, {member_count}, {created_at}</small></label>
+        <label class="field full"><span>Automatische Rollen</span><div class="resource-picker" data-field="role_ids" data-resource="roles" data-multiple="true"></div></label>
+        <label class="field"><span>Footer</span><input name="footer" maxlength="200"></label>
+        <label class="field"><span>Private Willkommens-DM</span><input name="dm_message" maxlength="1000" placeholder="Optional"></label>
+      </div>
+      <footer class="form-actions"><button class="button button-primary">Änderungen speichern</button></footer>
+    </form>
+
+    <form class="settings-section panel glass reveal" data-section="farewell">
+      <header class="panel-header"><div><p class="eyebrow">Mitglieder</p><h2>Abschiedssystem</h2><p>Verabschiede Mitglieder mit einer individuellen Nachricht.</p></div><label class="switch"><input type="checkbox" name="enabled"><span></span></label></header>
+      <div class="form-grid">
+        <label class="field"><span>Abschiedskanal</span><div class="resource-picker" data-field="channel_id" data-resource="channels" data-types="text,announcement"></div></label>
+        <label class="field"><span>Nachricht</span><textarea name="message" rows="5" maxlength="2000" placeholder="**{display_name}** hat {server} verlassen."></textarea></label>
+      </div>
+      <footer class="form-actions"><button class="button button-primary">Änderungen speichern</button></footer>
+    </form>
+
+    <form class="settings-section panel glass reveal" data-section="verify">
+      <header class="panel-header"><div><p class="eyebrow">Zugang</p><h2>Verify-System</h2><p>Gib verifizierten Mitgliedern automatisch Zugriff.</p></div></header>
+      <div class="form-grid two">
+        <label class="field"><span>Panel-Kanal</span><div class="resource-picker" data-field="channel_id" data-resource="channels" data-types="text,announcement"></div></label>
+        <label class="field"><span>Verify-Rolle</span><div class="resource-picker" data-field="role_id" data-resource="roles"></div></label>
+        <label class="field full"><span>Zu entfernende Rollen</span><div class="resource-picker" data-field="remove_role_ids" data-resource="roles" data-multiple="true"></div></label>
+        <label class="field"><span>Panel-Titel</span><input name="title" maxlength="256" value="Verifizierung"></label>
+        <label class="field"><span>Mindestalter des Accounts (Tage)</span><input name="minimum_account_age" type="number" min="0" max="3650" value="0"></label>
+        <label class="field full"><span>Panel-Beschreibung</span><textarea name="description" rows="4" maxlength="2000">Klicke auf den Button, um Zugriff auf den Server zu erhalten.</textarea></label>
+        <label class="check-row full"><input type="checkbox" name="send_dm"><span><strong>Bestätigung per DM</strong><small>Sendet nach erfolgreicher Verifizierung eine private Nachricht.</small></span></label>
+      </div>
+      <footer class="form-actions">
+        <button type="button" class="button button-ghost" id="publishVerify">Panel veröffentlichen</button>
+        <button class="button button-primary">Änderungen speichern</button>
+      </footer>
+    </form>
+  </div>
+</section>
+{% endblock %}

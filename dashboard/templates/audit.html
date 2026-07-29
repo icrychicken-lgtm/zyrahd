@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Audit-Log{% endblock %}
+{% block page_id %}audit{% endblock %}
+{% block eyebrow %}Nachvollziehbarkeit{% endblock %}
+{% block heading %}Audit-Log{% endblock %}
+{% block actions %}<span class="soft-chip">Unveränderliches Protokoll</span>{% endblock %}
+{% block content %}
+<section class="page-content">
+  <article class="panel glass reveal">
+    <header class="panel-header"><div><p class="eyebrow">Historie</p><h2>Dashboard-Änderungen</h2><p>Wer hat wann welche Einstellung verändert?</p></div><label class="search-box"><span>⌕</span><input data-table-search placeholder="Aktion, Nutzer oder Bereich …"></label></header>
+    <div class="audit-timeline" data-search-table>
+      {% for log in logs %}
+      <article class="audit-entry" data-search-text="{{ log.action }} {{ log.user_name }} {{ log.area }}">
+        <div class="audit-icon">↻</div>
+        <div class="audit-content"><header><strong>{{ log.action }}</strong><span class="badge">{{ log.area }}</span></header><p>Ausgeführt von <b>{{ log.user_name }}</b> · Discord-ID {{ log.user_id }}</p><small>{{ log.created_at.strftime('%d.%m.%Y um %H:%M:%S') }}{% if log.ip_address %} · {{ log.ip_address }}{% endif %}</small></div>
+        <button class="button button-ghost button-small audit-details" data-old='{{ log.old_value or "null" }}' data-new='{{ log.new_value or "null" }}'>Details</button>
+      </article>
+      {% else %}
+      <div class="empty-state"><span>↻</span><h3>Noch keine Änderungen</h3><p>Konfigurationsänderungen erscheinen automatisch hier.</p></div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<dialog class="modal" id="auditDialog">
+  <div class="modal-shell glass">
+    <header class="modal-header"><div><p class="eyebrow">Änderung</p><h2>Vorher / Nachher</h2></div><button class="icon-button" data-close-dialog>×</button></header>
+    <div class="modal-body diff-grid"><div><span>Vorher</span><pre id="auditOld"></pre></div><div><span>Nachher</span><pre id="auditNew"></pre></div></div>
+  </div>
+</dialog>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Moderation{% endblock %}
+{% block page_id %}moderation{% endblock %}
+{% block eyebrow %}Serververwaltung{% endblock %}
+{% block heading %}Moderation{% endblock %}
+{% block actions %}<button class="button button-primary" data-open-dialog="moderationDialog">⚑ Sanktion ausführen</button>{% endblock %}
+{% block content %}
+<section class="page-content">
+  <div class="stats-grid compact stagger">
+    <article class="stat-card glass"><span class="stat-icon amber">⚑</span><div><small>Gesamtfälle</small><strong>{{ cases|length }}</strong></div></article>
+    <article class="stat-card glass"><span class="stat-icon purple">⌁</span><div><small>Aktive Fälle</small><strong>{{ cases|selectattr('active')|list|length }}</strong></div></article>
+    <article class="stat-card glass"><span class="stat-icon blue">⌾</span><div><small>System</small><strong class="text-value">Bereit</strong></div></article>
+  </div>
+  <article class="panel glass reveal">
+    <header class="panel-header"><div><p class="eyebrow">Fallverlauf</p><h2>Moderationsfälle</h2></div><label class="search-box"><span>⌕</span><input data-table-search placeholder="Nutzer oder Grund suchen …"></label></header>
+    <div class="data-table moderation-table" data-search-table>
+      <div class="table-row table-head"><span>Fall</span><span>Nutzer</span><span>Aktion</span><span>Moderator</span><span>Datum</span><span>Status</span></div>
+      {% for case in cases %}
+      <div class="table-row" data-search-text="{{ case.target_name }} {{ case.target_id }} {{ case.reason }} {{ case.action }}">
+        <strong>#{{ case.case_number }}</strong>
+        <span><b>{{ case.target_name }}</b><small>{{ case.target_id }}</small></span>
+        <span class="badge">{{ case.action }}</span><span>{{ case.moderator_name }}</span>
+        <span>{{ case.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+        <span class="status-label {{ 'muted' if not case.active }}"><i></i>{{ 'Aktiv' if case.active else 'Aufgehoben' }}</span>
+      </div>
+      {% else %}
+      <div class="empty-state"><span>⚑</span><h3>Keine Moderationsfälle</h3><p>Ausgeführte Sanktionen werden hier protokolliert.</p></div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<dialog class="modal" id="moderationDialog">
+  <form class="modal-shell glass" id="moderationForm">
+    <header class="modal-header"><div><p class="eyebrow">Neue Aktion</p><h2>Sanktion ausführen</h2></div><button type="button" class="icon-button" data-close-dialog>×</button></header>
+    <div class="modal-body form-grid">
+      <label class="field"><span>Mitglied</span><div class="resource-picker" data-field="user_id" data-resource="members"></div></label>
+      <label class="field"><span>Aktion</span><select name="action"><option value="timeout">Timeout</option><option value="kick">Kick</option><option value="ban">Ban</option></select></label>
+      <label class="field"><span>Dauer in Minuten (bei Timeout)</span><input type="number" name="minutes" min="1" max="40320" value="10"></label>
+      <label class="field"><span>Grund</span><textarea name="reason" required maxlength="512" rows="4"></textarea></label>
+    </div>
+    <footer class="modal-footer"><button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button><button class="button button-danger">Sanktion bestätigen</button></footer>
+  </form>
+</dialog>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Team{% endblock %}
+{% block page_id %}team{% endblock %}
+{% block eyebrow %}Organisation{% endblock %}
+{% block heading %}Team Center{% endblock %}
+{% block actions %}<button class="button button-primary" data-open-dialog="announcementDialog">＋ Ankündigung</button>{% endblock %}
+{% block content %}
+<section class="page-content">
+  <div class="team-hero glass reveal">
+    <div><span class="hero-pill"><i></i> Interner Bereich</span><h2>Gemeinsam organisiert.</h2><p>Erstelle interne Ankündigungen und veröffentliche sie gezielt für Teamrollen.</p></div>
+    <div class="team-stack"><span>T</span><span>Z</span><span>+</span></div>
+  </div>
+  <div class="section-heading"><div><p class="eyebrow">Kommunikation</p><h2>Team-Ankündigungen</h2></div><span class="soft-chip">{{ announcements|length }} Einträge</span></div>
+  <div class="announcement-list stagger">
+    {% for item in announcements %}
+    <article class="announcement-card glass priority-{{ item.priority }}">
+      <aside><span>{{ '!' if item.priority in ['high', 'urgent'] else '✦' }}</span></aside>
+      <div><header><span class="badge">{{ item.priority }}</span><small>{{ item.created_at.strftime('%d.%m.%Y %H:%M') }}</small></header><h3>{{ item.title }}</h3><p>{{ item.content }}</p><footer>Von {{ item.author_name }} · {{ 'Veröffentlicht' if item.published else 'Entwurf' }}</footer></div>
+    </article>
+    {% else %}
+    <div class="empty-state glass"><span>♙</span><h3>Noch keine Ankündigung</h3><p>Informiere dein Team über wichtige Neuigkeiten.</p></div>
+    {% endfor %}
+  </div>
+</section>
+
+<dialog class="modal" id="announcementDialog">
+  <form class="modal-shell glass" id="announcementForm">
+    <header class="modal-header"><div><p class="eyebrow">Team</p><h2>Neue Ankündigung</h2></div><button type="button" class="icon-button" data-close-dialog>×</button></header>
+    <div class="modal-body form-grid">
+      <label class="field"><span>Titel</span><input name="title" maxlength="120" required></label>
+      <label class="field"><span>Nachricht</span><textarea name="content" maxlength="4000" rows="7" required></textarea></label>
+      <div class="form-grid two nested">
+        <label class="field"><span>Priorität</span><select name="priority"><option value="normal">Normal</option><option value="low">Niedrig</option><option value="high">Hoch</option><option value="urgent">Dringend</option></select></label>
+        <label class="field"><span>Discord-Kanal</span><div class="resource-picker" data-field="channel_id" data-resource="channels" data-types="text,announcement"></div></label>
+      </div>
+      <label class="field"><span>Zielrollen</span><div class="resource-picker" data-field="target_role_ids" data-resource="roles" data-multiple="true"></div></label>
+      <label class="check-row"><input type="checkbox" name="publish_now" checked><span><strong>Sofort in Discord veröffentlichen</strong><small>Ohne Auswahl wird die Ankündigung als Entwurf gespeichert.</small></span></label>
+    </div>
+    <footer class="modal-footer"><button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button><button class="button button-primary">Ankündigung erstellen</button></footer>
+  </form>
+</dialog>
+{% endblock %}

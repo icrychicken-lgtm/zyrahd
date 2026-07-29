@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Embed-Designer{% endblock %}
+{% block page_id %}embed-designer{% endblock %}
+{% block eyebrow %}Content Studio{% endblock %}
+{% block heading %}Embed-Designer{% endblock %}
+{% block actions %}<button class="button button-primary" form="embedForm">In Discord senden <span>→</span></button>{% endblock %}
+{% block content %}
+<section class="page-content designer-layout">
+  <form class="panel glass designer-form reveal" id="embedForm">
+    <header class="panel-header"><div><p class="eyebrow">Nachricht</p><h2>Inhalt gestalten</h2></div><span class="soft-chip">Live-Vorschau</span></header>
+    <div class="form-grid">
+      <label class="field"><span>Zielkanal</span><div class="resource-picker" data-field="channel_id" data-resource="channels" data-types="text,announcement"></div></label>
+      <label class="field"><span>Normaler Nachrichtentext</span><textarea name="content" maxlength="2000" rows="2" placeholder="Optionaler Text über dem Embed"></textarea></label>
+      <div class="divider"><span>Embed</span></div>
+      <label class="field"><span>Titel</span><input name="title" maxlength="256" data-preview></label>
+      <label class="field"><span>Beschreibung</span><textarea name="description" maxlength="4096" rows="7" data-preview placeholder="Schreibe eine übersichtliche Nachricht …"></textarea></label>
+      <div class="form-grid two nested">
+        <label class="field"><span>Farbe</span><input type="color" name="color" value="#8b5cf6" data-preview></label>
+        <label class="check-row"><input type="checkbox" name="timestamp"><span><strong>Zeitstempel</strong></span></label>
+      </div>
+      <label class="field"><span>Footer</span><input name="footer" maxlength="2048" data-preview></label>
+      <label class="field"><span>Thumbnail-URL</span><input type="url" name="thumbnail" data-preview placeholder="https://…"></label>
+      <label class="field"><span>Großes Bild</span><input type="url" name="image" data-preview placeholder="https://…"></label>
+      <div class="field-builder">
+        <header><div><p class="eyebrow">Optional</p><h3>Felder</h3></div><button type="button" class="button button-ghost button-small" id="addEmbedField">＋ Feld</button></header>
+        <div id="embedFields"></div>
+      </div>
+    </div>
+    <footer class="form-actions"><button class="button button-primary">In Discord senden</button></footer>
+  </form>
+
+  <aside class="preview-column">
+    <div class="preview-sticky">
+      <p class="eyebrow">Discord-Vorschau</p>
+      <div class="discord-preview glass">
+        <div class="discord-message">
+          <div class="bot-avatar">Z</div>
+          <div class="discord-content">
+            <header><strong>zyrahd.net</strong><span>APP</span><small>Heute um 20:42</small></header>
+            <p id="previewContent" class="preview-normal hidden"></p>
+            <article class="discord-embed" id="embedPreview">
+              <div>
+                <h3 id="previewTitle">Dein Embed-Titel</h3>
+                <p id="previewDescription">Beginne links zu schreiben. Deine Nachricht erscheint sofort in dieser Vorschau.</p>
+                <div id="previewFields" class="preview-fields"></div>
+                <img id="previewImage" class="preview-image hidden" alt="">
+                <footer><span id="previewFooter">zyrahd.net</span></footer>
+              </div>
+              <img id="previewThumbnail" class="preview-thumbnail hidden" alt="">
+            </article>
+          </div>
+        </div>
+      </div>
+      <div class="preview-note"><span>✦</span><p><strong>Discord-Limits inklusive</strong><br>Alle Inhalte werden vor dem Senden serverseitig validiert.</p></div>
+    </div>
+  </aside>
+</section>
+{% endblock %}

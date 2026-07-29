@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Anmelden{% endblock %}
+{% block page_id %}login{% endblock %}
+{% block content %}
+<section class="login-shell">
+  <div class="login-showcase">
+    <a class="brand brand-large" href="/">
+      <span class="brand-mark"><span>Z</span></span>
+      <span><strong>zyrahd</strong><small>.net</small></span>
+    </a>
+    <div class="hero-copy">
+      <span class="hero-pill"><i></i> Dein Server. Ein Dashboard.</span>
+      <h1>Discord-Verwaltung,<br><span>neu gedacht.</span></h1>
+      <p>Tickets, Sicherheit und Teamverwaltung in einer schnellen, modernen Oberfläche.</p>
+      <div class="feature-row">
+        <span><b>01</b> Sicher</span>
+        <span><b>02</b> Live</span>
+        <span><b>03</b> Modular</span>
+      </div>
+    </div>
+    <div class="orbital">
+      <div class="orbit orbit-one"><i></i></div>
+      <div class="orbit orbit-two"><i></i></div>
+      <div class="core">Z</div>
+    </div>
+  </div>
+  <div class="login-panel">
+    <div class="login-card glass">
+      <span class="discord-glyph">◈</span>
+      <p class="eyebrow">Willkommen zurück</p>
+      <h2>Control Center</h2>
+      <p>Melde dich mit Discord an. Deine Serverrollen bestimmen automatisch, welche Bereiche du verwalten darfst.</p>
+      {% if configuration_error %}
+      <div class="alert error">{{ configuration_error }}</div>
+      {% else %}
+      <a href="{{ url_for('auth.login') }}" class="button button-discord button-large">
+        <span>◈</span> Mit Discord anmelden <b>→</b>
+      </a>
+      {% endif %}
+      <div class="secure-note"><span>⌾</span> OAuth2 · Keine Passwörter werden gespeichert</div>
+    </div>
+    <p class="login-footer">zyrahd.net · Secure server management</p>
+  </div>
+</section>
+{% endblock %}

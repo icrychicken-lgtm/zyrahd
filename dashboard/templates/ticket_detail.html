@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Ticket #{{ ticket.number }}{% endblock %}
+{% block page_id %}ticket-detail{% endblock %}
+{% block eyebrow %}<a href="{{ url_for('main.tickets') }}">Tickets</a> / #{{ ticket.number }}{% endblock %}
+{% block heading %}{{ ticket.ticket_type.name }}{% endblock %}
+{% block actions %}
+<span class="badge status-{{ ticket.status }}">{{ ticket.status }}</span>
+{% if ticket.status != 'closed' %}
+<button class="button button-danger button-small" data-ticket-status="closed" data-ticket-id="{{ ticket.id }}">Schließen</button>
+{% elif 'tickets.manage' in current_permissions %}
+<button class="button button-primary button-small" data-ticket-status="open" data-ticket-id="{{ ticket.id }}">Wieder öffnen</button>
+{% endif %}
+{% endblock %}
+{% block content %}
+<section class="page-content ticket-layout">
+  <article class="chat-panel glass reveal">
+    <header class="chat-header">
+      <div class="ticket-avatar">{{ ticket.ticket_type.emoji }}</div>
+      <div><strong>Ticket #{{ ticket.number }}</strong><small>Discord und Web werden synchronisiert</small></div>
+      <span class="live-label"><i></i> Live</span>
+    </header>
+    <div class="message-list" id="messageList">
+      {% for message in ticket.messages %}
+        {% if message.system_event %}
+        <div class="system-message"><span>✦</span> {{ message.content }} <small>{{ message.created_at.strftime('%H:%M') }}</small></div>
+        {% else %}
+        <div class="message {{ 'own' if message.author_id == current_user.id }}">
+          {% if message.author_avatar %}<img src="{{ message.author_avatar }}" alt="">{% else %}<span class="avatar-fallback">{{ message.author_name[:1] }}</span>{% endif %}
+          <div>
+            <header><strong>{{ message.author_name }}</strong><span class="source source-{{ message.source }}">{{ message.source }}</span><small>{{ message.created_at.strftime('%d.%m. %H:%M') }}</small></header>
+            <p>{{ message.content }}</p>
+            {% if message.attachment_url %}<a href="{{ message.attachment_url }}" target="_blank" rel="noopener">Anhang öffnen ↗</a>{% endif %}
+          </div>
+        </div>
+        {% endif %}
+      {% else %}
+      <div class="empty-state compact"><span>💬</span><p>Noch keine Nachrichten.</p></div>
+      {% endfor %}
+    </div>
+    {% if ticket.status != 'closed' %}
+    <form class="composer" id="ticketMessageForm" data-ticket-id="{{ ticket.id }}">
+      <textarea name="content" maxlength="2000" placeholder="Nachricht schreiben …" required></textarea>
+      <button class="button button-primary" aria-label="Senden">Senden <span>↑</span></button>
+    </form>
+    {% else %}
+    <div class="closed-notice">🔒 Dieses Ticket ist geschlossen.</div>
+    {% endif %}
+  </article>
+
+  <aside class="ticket-info">
+    <article class="panel glass reveal">
+      <header class="panel-header"><div><p class="eyebrow">Details</p><h3>Ticket-Info</h3></div></header>
+      <dl class="detail-list">
+        <div><dt>Erstellt von</dt><dd>{{ ticket.creator_name }}</dd></div>
+        <div><dt>Bereich</dt><dd>{{ ticket.ticket_type.name }}</dd></div>
+        <div><dt>Priorität</dt><dd><span class="priority priority-{{ ticket.priority }}">{{ ticket.priority }}</span></dd></div>
+        <div><dt>Übernommen von</dt><dd>{{ ticket.claimed_by_name or 'Noch niemand' }}</dd></div>
+        <div><dt>Erstellt</dt><dd>{{ ticket.created_at.strftime('%d.%m.%Y %H:%M') }}</dd></div>
+      </dl>
+    </article>
+    {% if form_data %}
+    <article class="panel glass reveal">
+      <header class="panel-header"><div><p class="eyebrow">Anfrage</p><h3>Formular</h3></div></header>
+      <div class="form-answers">
+        {% for key, answer in form_data.items() %}
+        <div><small>Antwort</small><p>{{ answer }}</p></div>
+        {% endfor %}
+      </div>
+    </article>
+    {% endif %}
+  </aside>
+</section>
+{% endblock %}

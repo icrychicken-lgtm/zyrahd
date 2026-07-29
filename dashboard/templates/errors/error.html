@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Fehler {{ code }}{% endblock %}
+{% block page_id %}error{% endblock %}
+{% block content %}
+<section class="error-page">
+  <div class="error-visual"><span>{{ code }}</span><i></i><i></i></div>
+  <p class="eyebrow">Da ist etwas schiefgelaufen</p>
+  <h1>{{ message }}</h1>
+  <p>Du kannst zur vorherigen Seite zurückkehren oder das Control Center öffnen.</p>
+  <div><button class="button button-ghost" onclick="history.back()">Zurück</button>{% if current_user and 'dashboard.open' in current_permissions %}<a href="{{ url_for('main.dashboard') }}" class="button button-primary">Zum Dashboard</a>{% endif %}</div>
+</section>
+{% endblock %}

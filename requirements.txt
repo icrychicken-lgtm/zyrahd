@@ -1,0 +1,8 @@
+discord.py
+Flask
+Flask-Limiter
+Flask-WTF
+python-dotenv
+requests
+SQLAlchemy
+waitress

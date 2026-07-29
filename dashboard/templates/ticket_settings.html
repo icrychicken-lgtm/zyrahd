@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Ticket-System{% endblock %}
+{% block page_id %}ticket-settings{% endblock %}
+{% block eyebrow %}Support{% endblock %}
+{% block heading %}Ticket-System{% endblock %}
+{% block actions %}<button class="button button-primary" id="newTicketType"><span>＋</span> Ticket-Art</button>{% endblock %}
+{% block content %}
+<section class="page-content">
+  <article class="panel glass reveal">
+    <header class="panel-header">
+      <div><p class="eyebrow">Discord</p><h2>Ticket-Panel</h2><p>Veröffentliche den Einstiegspunkt für neue Support-Anfragen.</p></div>
+      <span class="panel-illustration">◇</span>
+    </header>
+    <form class="form-grid two" data-section="ticket_panel">
+      <label class="field"><span>Panel-Kanal</span><div class="resource-picker" data-field="channel_id" data-resource="channels" data-types="text,announcement"></div></label>
+      <label class="field"><span>Titel</span><input name="title" value="Support-Center" maxlength="256"></label>
+      <label class="field full"><span>Beschreibung</span><textarea name="description" rows="3" maxlength="2000">Benötigst du Hilfe oder möchtest du Kontakt mit unserem Team aufnehmen? Klicke auf „Ticket erstellen“.</textarea></label>
+      <div class="form-actions full"><button class="button button-ghost">Einstellungen speichern</button><button type="button" class="button button-primary" id="publishTicketPanel">Panel veröffentlichen</button></div>
+    </form>
+  </article>
+
+  <div class="section-heading"><div><p class="eyebrow">Konfiguration</p><h2>Ticket-Arten</h2></div><span class="soft-chip">{{ ticket_types|length }} Bereiche</span></div>
+  <div class="config-card-grid stagger">
+    {% for type in ticket_types %}
+    <article class="config-card glass">
+      <header><span class="config-icon" style="--accent: {{ type.color }}">{{ type.emoji }}</span><label class="status-toggle"><i class="{{ 'active' if type.enabled }}"></i>{{ 'Aktiv' if type.enabled else 'Inaktiv' }}</label></header>
+      <h3>{{ type.name }}</h3><p>{{ type.description or 'Keine Beschreibung' }}</p>
+      <div class="mini-stats"><span><b>{{ type.fields|length }}</b> Felder</span><span><b>{{ type.max_open }}</b> max. offen</span><span><b>{{ type.cooldown_minutes }}</b> Min.</span></div>
+      <footer><button class="button button-ghost button-small edit-ticket-type" data-id="{{ type.id }}">Bearbeiten</button><button class="icon-button danger delete-ticket-type" data-id="{{ type.id }}" title="Löschen">⌫</button></footer>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<dialog class="modal" id="ticketTypeDialog">
+  <form class="modal-shell glass modal-wide" id="ticketTypeForm">
+    <header class="modal-header"><div><p class="eyebrow">Ticket-System</p><h2 id="ticketTypeHeading">Ticket-Art</h2></div><button type="button" class="icon-button" data-close-dialog>×</button></header>
+    <div class="modal-body">
+      <input type="hidden" name="id">
+      <div class="form-grid two">
+        <label class="field"><span>Name *</span><input name="name" required maxlength="80"></label>
+        <label class="field"><span>Emoji & Farbe</span><div class="inline-inputs"><input name="emoji" value="🎫" maxlength="8"><input type="color" name="color" value="#8b5cf6"></div></label>
+        <label class="field full"><span>Beschreibung</span><input name="description" maxlength="300"></label>
+        <label class="field"><span>Discord-Kategorie</span><div class="resource-picker" data-field="category_id" data-resource="channels" data-types="category"></div></label>
+        <label class="field"><span>Zuständige Rollen</span><div class="resource-picker" data-field="support_role_ids" data-resource="roles" data-multiple="true"></div></label>
+        <label class="field"><span>Log-Kanal</span><div class="resource-picker" data-field="log_channel_id" data-resource="channels" data-types="text,announcement"></div></label>
+        <label class="field"><span>Transcript-Kanal</span><div class="resource-picker" data-field="transcript_channel_id" data-resource="channels" data-types="text,announcement"></div></label>
+        <label class="field"><span>Maximal offene Tickets</span><input type="number" name="max_open" min="1" max="20" value="1"></label>
+        <label class="field"><span>Cooldown (Minuten)</span><input type="number" name="cooldown_minutes" min="0" max="10080" value="5"></label>
+        <label class="field full"><span>Begrüßungsnachricht</span><textarea name="welcome_message" rows="3" maxlength="2000"></textarea></label>
+        <label class="check-row full"><input type="checkbox" name="enabled" checked><span><strong>Ticket-Art aktiv</strong><small>Kann von Nutzern ausgewählt werden.</small></span></label>
+      </div>
+      <div class="field-builder">
+        <header><div><p class="eyebrow">Discord-Modal</p><h3>Formularfelder</h3></div><button type="button" class="button button-ghost button-small" id="addTicketField">＋ Feld</button></header>
+        <div id="ticketFields"></div>
+        <small>Discord unterstützt maximal fünf Felder pro Formular.</small>
+      </div>
+    </div>
+    <footer class="modal-footer"><button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button><button class="button button-primary">Ticket-Art speichern</button></footer>
+  </form>
+</dialog>
+{% endblock %}

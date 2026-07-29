@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Dashboard-Rollen{% endblock %}
+{% block page_id %}roles{% endblock %}
+{% block eyebrow %}Zugriffskontrolle{% endblock %}
+{% block heading %}Dashboard-Rollen{% endblock %}
+{% block content %}
+<section class="page-content roles-layout">
+  <article class="panel glass reveal">
+    <header class="panel-header"><div><p class="eyebrow">Discord-Rolle</p><h2>Rolle konfigurieren</h2><p>Berechtigungen werden bei jeder Seite und jeder API-Aktion serverseitig geprüft.</p></div><span class="panel-illustration">⌘</span></header>
+    <form id="rolePermissionForm">
+      <label class="field"><span>Rolle auswählen</span><div class="resource-picker" data-field="role_id" data-resource="roles"></div></label>
+      <div class="permission-grid">
+        {% set permissions = [
+          ('dashboard.open','Dashboard öffnen','Zugriff auf die Übersichtsseite'),
+          ('tickets.view','Tickets ansehen','Freigegebene Support-Tickets sehen'),
+          ('tickets.manage','Tickets bearbeiten','Antworten, übernehmen und schließen'),
+          ('tickets.delete','Tickets löschen','Archivierte Tickets entfernen'),
+          ('applications.manage','Bewerbungen','Bewerbungen bearbeiten'),
+          ('moderation.execute','Moderation','Sanktionen ausführen'),
+          ('security.manage','Sicherheit','Filter und Schutzregeln bearbeiten'),
+          ('embeds.send','Nachrichten senden','Embeds in Discord veröffentlichen'),
+          ('server.manage','Server-Tools','Verify und Begrüßung verwalten'),
+          ('team.manage','Team verwalten','Team-Ankündigungen erstellen'),
+          ('roles.manage','Dashboard-Rollen','Diese Berechtigungen verwalten'),
+          ('audit.view','Audit-Logs','Änderungsverlauf einsehen'),
+          ('admin','Vollzugriff','Alle Dashboard-Berechtigungen')
+        ] %}
+        {% for value, label, description in permissions %}
+        <label class="permission-card"><input type="checkbox" name="permissions" value="{{ value }}"><span class="permission-check">✓</span><span><strong>{{ label }}</strong><small>{{ description }}</small></span></label>
+        {% endfor %}
+      </div>
+      <footer class="form-actions"><button class="button button-primary">Rollenrechte speichern</button></footer>
+    </form>
+  </article>
+  <aside class="panel glass reveal">
+    <header class="panel-header"><div><p class="eyebrow">Aktiv</p><h2>Zugeordnete Rollen</h2></div><span class="soft-chip">{{ mappings|length }}</span></header>
+    <div class="mapping-list">
+      {% for mapping in mappings %}
+      <div class="mapping-row"><span class="role-dot"></span><div><strong>@{{ mapping.role_name }}</strong><small>{{ mapping.permissions|length }} Zeichen Konfiguration</small></div><button class="icon-button danger delete-role-mapping" data-role-id="{{ mapping.role_id }}">⌫</button></div>
+      {% else %}
+      <div class="empty-state compact"><span>⌘</span><p>Noch keine Discord-Rolle zugeordnet.</p></div>
+      {% endfor %}
+    </div>
+  </aside>
+</section>
+{% endblock %}

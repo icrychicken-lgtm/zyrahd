@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090611">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Dashboard{% endblock %} · zyrahd.net</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body data-page="{% block page_id %}default{% endblock %}">
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <div class="noise"></div>
+
+  {% if current_user %}
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="{{ url_for('main.dashboard') }}">
+      <span class="brand-mark"><span>Z</span></span>
+      <span><strong>zyrahd</strong><small>.net</small></span>
+    </a>
+
+    <nav class="nav">
+      <span class="nav-label">Übersicht</span>
+      {% if 'dashboard.open' in current_permissions %}
+      <a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if request.endpoint == 'main.dashboard' }}">
+        <span class="nav-icon">⌂</span> Dashboard
+      </a>
+      {% endif %}
+      <a href="{{ url_for('main.tickets') }}" class="{{ 'active' if request.endpoint in ['main.tickets', 'main.ticket_detail'] }}">
+        <span class="nav-icon">◈</span> Meine Tickets
+      </a>
+
+      {% if current_permissions & {'tickets.manage', 'moderation.execute', 'security.manage'} %}
+      <span class="nav-label">Verwaltung</span>
+      {% if 'tickets.manage' in current_permissions %}
+      <a href="{{ url_for('main.ticket_settings') }}" class="{{ 'active' if request.endpoint == 'main.ticket_settings' }}">
+        <span class="nav-icon">◇</span> Ticket-System
+      </a>
+      {% endif %}
+      {% if 'moderation.execute' in current_permissions %}
+      <a href="{{ url_for('main.moderation') }}" class="{{ 'active' if request.endpoint == 'main.moderation' }}">
+        <span class="nav-icon">⚑</span> Moderation
+      </a>
+      {% endif %}
+      {% if 'security.manage' in current_permissions %}
+      <a href="{{ url_for('main.security') }}" class="{{ 'active' if request.endpoint == 'main.security' }}">
+        <span class="nav-icon">⬡</span> Sicherheit
+      </a>
+      {% endif %}
+      {% endif %}
+
+      {% if current_permissions & {'embeds.send', 'team.manage', 'server.manage'} %}
+      <span class="nav-label">Server</span>
+      {% if 'embeds.send' in current_permissions %}
+      <a href="{{ url_for('main.embed_designer') }}" class="{{ 'active' if request.endpoint == 'main.embed_designer' }}">
+        <span class="nav-icon">✦</span> Embed-Designer
+      </a>
+      {% endif %}
+      {% if 'team.manage' in current_permissions %}
+      <a href="{{ url_for('main.team') }}" class="{{ 'active' if request.endpoint == 'main.team' }}">
+        <span class="nav-icon">♙</span> Team
+      </a>
+      {% endif %}
+      {% if 'server.manage' in current_permissions %}
+      <a href="{{ url_for('main.settings_page') }}" class="{{ 'active' if request.endpoint == 'main.settings_page' }}">
+        <span class="nav-icon">⚙</span> Einstellungen
+      </a>
+      {% endif %}
+      {% endif %}
+
+      {% if current_permissions & {'roles.manage', 'audit.view'} %}
+      <span class="nav-label">Administration</span>
+      {% if 'roles.manage' in current_permissions %}
+      <a href="{{ url_for('main.dashboard_roles') }}" class="{{ 'active' if request.endpoint == 'main.dashboard_roles' }}">
+        <span class="nav-icon">⌘</span> Dashboard-Rollen
+      </a>
+      {% endif %}
+      {% if 'audit.view' in current_permissions %}
+      <a href="{{ url_for('main.audit_log') }}" class="{{ 'active' if request.endpoint == 'main.audit_log' }}">
+        <span class="nav-icon">↻</span> Audit-Log
+      </a>
+      {% endif %}
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-user">
+      <img src="{{ current_user.avatar }}" alt="" referrerpolicy="no-referrer">
+      <span><strong>{{ current_user.username }}</strong><small>{{ current_user.tag }}</small></span>
+      <form action="{{ url_for('auth.logout') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="icon-button" title="Abmelden" aria-label="Abmelden">↗</button>
+      </form>
+    </div>
+  </aside>
+  {% endif %}
+
+  <main class="{{ 'app-main' if current_user else 'login-main' }}">
+    {% if current_user %}
+    <header class="topbar">
+      <button class="mobile-toggle icon-button" id="mobileToggle" aria-label="Menü öffnen">☰</button>
+      <div>
+        <p class="eyebrow">{% block eyebrow %}Control Center{% endblock %}</p>
+        <h1>{% block heading %}Dashboard{% endblock %}</h1>
+      </div>
+      <div class="topbar-actions">{% block actions %}{% endblock %}</div>
+    </header>
+    {% endif %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+      <div class="toast visible {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+    {% block content %}{% endblock %}
+  </main>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</body>
+</html>

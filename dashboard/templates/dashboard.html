@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_id %}dashboard{% endblock %}
+{% block eyebrow %}Übersicht{% endblock %}
+{% block heading %}Willkommen, {{ current_user.username }}{% endblock %}
+{% block actions %}
+<span class="status-chip {{ 'online' if bot_health.online else 'offline' }}">
+  <i></i> Bot {{ 'online' if bot_health.online else 'offline' }}
+</span>
+{% endblock %}
+{% block content %}
+<section class="page-content">
+  <div class="welcome-banner glass reveal">
+    <div>
+      <span class="hero-pill"><i></i> Alles unter Kontrolle</span>
+      <h2>Guten Abend, {{ current_user.username }} <span>✦</span></h2>
+      <p>Hier siehst du, was gerade auf deinem Discord-Server passiert.</p>
+    </div>
+    <div class="server-badge">
+      <div class="pulse-rings"><span></span><span></span><b>Z</b></div>
+      <div><strong>{{ bot_health.guild or 'zyrahd.net' }}</strong><small>{{ bot_health.member_count or '—' }} Mitglieder</small></div>
+    </div>
+  </div>
+
+  <div class="stats-grid stagger">
+    <article class="stat-card glass">
+      <span class="stat-icon purple">♙</span>
+      <div><small>Mitglieder</small><strong data-count="{{ bot_health.member_count or 0 }}">{{ bot_health.member_count or '—' }}</strong></div>
+      <span class="stat-trend neutral">Live</span>
+    </article>
+    <article class="stat-card glass">
+      <span class="stat-icon blue">◇</span>
+      <div><small>Offene Tickets</small><strong data-count="{{ stats.open_tickets }}">{{ stats.open_tickets }}</strong></div>
+      <span class="stat-trend">Aktiv</span>
+    </article>
+    <article class="stat-card glass">
+      <span class="stat-icon pink">✦</span>
+      <div><small>Tickets heute</small><strong data-count="{{ stats.tickets_today }}">{{ stats.tickets_today }}</strong></div>
+      <span class="stat-trend neutral">Heute</span>
+    </article>
+    <article class="stat-card glass">
+      <span class="stat-icon amber">⚑</span>
+      <div><small>Sanktionen heute</small><strong data-count="{{ stats.moderation_today }}">{{ stats.moderation_today }}</strong></div>
+      <span class="stat-trend neutral">24h</span>
+    </article>
+  </div>
+
+  <div class="dashboard-grid">
+    <article class="panel glass reveal">
+      <header class="panel-header">
+        <div><p class="eyebrow">Aktivität</p><h3>Tickets der letzten 7 Tage</h3></div>
+        <span class="soft-chip">7 Tage</span>
+      </header>
+      <div class="chart-wrap">
+        <canvas id="ticketChart"
+          data-labels='{{ chart_labels|tojson }}'
+          data-values='{{ chart_values|tojson }}'
+          aria-label="Ticket-Aktivität"></canvas>
+      </div>
+    </article>
+    <article class="panel glass reveal">
+      <header class="panel-header">
+        <div><p class="eyebrow">System</p><h3>Bot-Status</h3></div>
+        <span class="status-dot {{ 'online' if bot_health.online else '' }}"></span>
+      </header>
+      <div class="health-display">
+        <div class="health-ring {{ 'active' if bot_health.online else '' }}"><span>{{ bot_health.latency or '—' }}<small>ms</small></span></div>
+        <ul class="health-list">
+          <li><span>Discord</span><b>{{ 'Verbunden' if bot_health.online else 'Getrennt' }}</b></li>
+          <li><span>Gateway</span><b>{{ bot_health.latency or '—' }} ms</b></li>
+          <li><span>Datenbank</span><b>Bereit</b></li>
+        </ul>
+      </div>
+    </article>
+  </div>
+
+  <div class="dashboard-grid lower">
+    <article class="panel glass reveal">
+      <header class="panel-header">
+        <div><p class="eyebrow">Support</p><h3>Neueste Tickets</h3></div>
+        <a href="{{ url_for('main.tickets') }}" class="text-link">Alle ansehen →</a>
+      </header>
+      <div class="activity-list">
+        {% for ticket in recent_tickets %}
+        <a href="{{ url_for('main.ticket_detail', ticket_id=ticket.id) }}" class="activity-row">
+          <span class="ticket-number">#{{ ticket.number }}</span>
+          <div><strong>{{ ticket.ticket_type.name }}</strong><small>{{ ticket.creator_name }} · {{ ticket.created_at.strftime('%d.%m. %H:%M') }}</small></div>
+          <span class="badge status-{{ ticket.status }}">{{ ticket.status }}</span>
+        </a>
+        {% else %}
+        <div class="empty-state compact"><span>◇</span><p>Noch keine Tickets vorhanden.</p></div>
+        {% endfor %}
+      </div>
+    </article>
+    <article class="panel glass reveal">
+      <header class="panel-header">
+        <div><p class="eyebrow">Protokoll</p><h3>Letzte Änderungen</h3></div>
+        {% if 'audit.view' in current_permissions %}<a href="{{ url_for('main.audit_log') }}" class="text-link">Audit-Log →</a>{% endif %}
+      </header>
+      <div class="timeline">
+        {% for log in audit_logs %}
+        <div class="timeline-item"><i></i><div><strong>{{ log.action }}</strong><small>{{ log.user_name }} · {{ log.created_at.strftime('%d.%m. %H:%M') }}</small></div></div>
+        {% else %}
+        <div class="empty-state compact"><span>↻</span><p>Keine sichtbaren Änderungen.</p></div>
+        {% endfor %}
+      </div>
+    </article>
+  </div>
+</section>
+{% endblock %}

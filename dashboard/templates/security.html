@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Sicherheit{% endblock %}
+{% block page_id %}security{% endblock %}
+{% block eyebrow %}Schutz{% endblock %}
+{% block heading %}Sicherheit & Automod{% endblock %}
+{% block actions %}<span class="status-chip online"><i></i> Schutz aktiv</span>{% endblock %}
+{% block content %}
+<section class="page-content">
+  <div class="security-hero glass reveal">
+    <div class="shield-visual"><span>⬡</span><i></i><i></i></div>
+    <div><span class="hero-pill"><i></i> Zyrahd Shield</span><h2>Dein Server bleibt ruhig.</h2><p>Wortfilter und Anti-Spam prüfen neue Nachrichten direkt im Bot.</p></div>
+    <div class="security-score"><strong>Live</strong><small>Echtzeitschutz</small></div>
+  </div>
+
+  <div class="dashboard-grid">
+    <form class="panel glass reveal" data-section="security">
+      <header class="panel-header"><div><p class="eyebrow">Automod</p><h2>Anti-Spam</h2><p>Erkennt zu viele Nachrichten in kurzer Zeit.</p></div><label class="switch"><input type="checkbox" name="anti_spam_enabled"><span></span></label></header>
+      <div class="form-grid two">
+        <label class="field"><span>Nachrichtenlimit</span><input type="number" name="spam_message_limit" min="3" max="20" value="6"></label>
+        <label class="field"><span>Zeitfenster (Sekunden)</span><input type="number" name="spam_window_seconds" min="2" max="60" value="6"></label>
+        <label class="field"><span>Aktion</span><select name="spam_action"><option value="delete">Nachrichten löschen</option><option value="warn">Verwarnen</option><option value="timeout">Timeout</option><option value="kick">Kick</option><option value="ban">Ban</option></select></label>
+        <label class="field"><span>Timeout (Minuten)</span><input type="number" name="spam_timeout_minutes" min="1" max="40320" value="5"></label>
+        <label class="field full"><span>Ausgenommene Kanäle</span><div class="resource-picker" data-field="ignored_channel_ids" data-resource="channels" data-types="text,announcement" data-multiple="true"></div></label>
+        <label class="field full"><span>Ausgenommene Rollen</span><div class="resource-picker" data-field="ignored_role_ids" data-resource="roles" data-multiple="true"></div></label>
+      </div>
+      <footer class="form-actions"><button class="button button-primary">Schutz speichern</button></footer>
+    </form>
+
+    <article class="panel glass reveal">
+      <header class="panel-header"><div><p class="eyebrow">Neuer Eintrag</p><h2>Wortfilter</h2><p>Auch einfache Umgehungen mit Zeichen werden erkannt.</p></div></header>
+      <form id="wordFilterForm" class="form-grid two">
+        <label class="field full"><span>Wort oder Ausdruck</span><input name="phrase" required maxlength="200" placeholder="Unerwünschter Ausdruck"></label>
+        <label class="field"><span>Treffer</span><select name="match_type"><option value="contains">Enthält Ausdruck</option><option value="exact">Exaktes Wort</option></select></label>
+        <label class="field"><span>Aktion</span><select name="action"><option value="delete">Löschen</option><option value="warn">Verwarnen</option><option value="timeout">Timeout</option><option value="kick">Kick</option><option value="ban">Ban</option></select></label>
+        <label class="field"><span>Timeout (Minuten)</span><input type="number" name="timeout_minutes" min="0" max="40320" value="5"></label>
+        <label class="field"><span>Antwort</span><input name="response" maxlength="300" placeholder="Optional"></label>
+        <label class="check-row full"><input type="checkbox" name="case_sensitive"><span><strong>Groß-/Kleinschreibung beachten</strong></span></label>
+        <button class="button button-primary full">Filter hinzufügen</button>
+      </form>
+    </article>
+  </div>
+
+  <article class="panel glass reveal">
+    <header class="panel-header"><div><p class="eyebrow">Regeln</p><h2>Aktive Wortfilter</h2></div><span class="soft-chip">{{ filters|length }} Einträge</span></header>
+    <div class="data-table">
+      <div class="table-row table-head"><span>Ausdruck</span><span>Übereinstimmung</span><span>Aktion</span><span>Status</span><span></span></div>
+      {% for filter in filters %}
+      <div class="table-row">
+        <strong>{{ filter.phrase }}</strong><span>{{ filter.match_type }}</span><span class="badge">{{ filter.action }}</span><span class="status-label"><i></i> Aktiv</span>
+        <button class="icon-button danger delete-word-filter" data-id="{{ filter.id }}">⌫</button>
+      </div>
+      {% else %}
+      <div class="empty-state compact"><span>⬡</span><p>Noch keine Wörter blockiert.</p></div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% endblock %}
